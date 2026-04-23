@@ -7,3 +7,6 @@
 [submodule "src/samrh71_rtems_spw/n7s-spw"]
 	path = src/samrh71_rtems_spw/n7s-spw
 	url = git@github.com:n7space/n7s-spw.git
+[submodule "cmake-tools"]
+	path = cmake-tools
+	url = https://github.com/n7space/cmake-tools

@@ -21,6 +21,7 @@ target_sources(SamRH71RtemsSpw
             ${CMAKE_SOURCE_DIR}/TASTE-SAMV71-RTEMS-Runtime/src
             ${CMAKE_CURRENT_SOURCE_DIR}
             ${CMAKE_CURRENT_SOURCE_DIR}/n7s-spw/src
+            ${CMAKE_CURRENT_SOURCE_DIR}/n7s-spw/stubs
             ${CMAKE_CURRENT_SOURCE_DIR}/n7s-spw/src/microchip_spw)
 
 target_link_libraries(SamRH71RtemsSpw

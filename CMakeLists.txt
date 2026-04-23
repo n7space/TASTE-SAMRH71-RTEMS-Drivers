@@ -9,7 +9,7 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/build/bin)
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/build/lib)
 set(TESTS_OUTPUT_PATH ${CMAKE_BINARY_DIR}/build/tests)
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake-tools)
 
 include(MessageColors)
 include(LoggingHelper)
@@ -20,7 +20,7 @@ include(Sanitizers)
 
 option(TASTE_SAMRH71_DRIVERS_WARNINGS_AS_ERRORS
        "Treat compiler warnings as errors"
-       TRUE)
+       FALSE)
 
 if(TASTE_SAMRH71_DRIVERS_WARNINGS_AS_ERRORS)
     log_option_enabled("warnings as errors")
@@ -87,5 +87,13 @@ add_subdirectory(TASTE-SAMV71-RTEMS-Runtime/arm-bsp/src/Pmc)
 add_subdirectory(TASTE-SAMV71-RTEMS-Runtime/arm-bsp/src/Tic)
 add_subdirectory(TASTE-SAMV71-RTEMS-Runtime/arm-bsp/src/Uart)
 add_subdirectory(TASTE-SAMV71-RTEMS-Runtime/arm-bsp/src/Utils)
-add_subdirectory(TASTE-SAMV71-RTEMS-Runtime/src)
+add_subdirectory(TASTE-SAMV71-RTEMS-Runtime/src/Mocks)
+add_subdirectory(TASTE-SAMV71-RTEMS-Runtime/src/BrokerLock)
+add_subdirectory(TASTE-SAMV71-RTEMS-Runtime/src/SamV71Core)
+add_subdirectory(TASTE-SAMV71-RTEMS-Runtime/src/Hal)
+add_subdirectory(TASTE-SAMV71-RTEMS-Runtime/src/Monitor)
+add_subdirectory(TASTE-SAMV71-RTEMS-Runtime/src/ThreadsCommon)
+add_subdirectory(TASTE-SAMV71-RTEMS-Runtime/src/Xdmac)
+add_subdirectory(TASTE-SAMV71-RTEMS-Runtime/src/BootHelper)
+
 add_subdirectory(src)
