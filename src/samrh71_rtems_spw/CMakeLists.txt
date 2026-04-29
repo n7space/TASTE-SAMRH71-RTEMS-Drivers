@@ -12,9 +12,9 @@ set(N7S_SPW_SOURCES
 
 add_library(SamRH71RtemsSpw STATIC)
 target_sources(SamRH71RtemsSpw
-  PRIVATE   samrh71_rtems_spacewire.c
+  PRIVATE   samrh71_rtems_spw.c
             ${N7S_SPW_SOURCES}
-  PUBLIC    samrh71_rtems_spacewire.h)
+  PUBLIC    samrh71_rtems_spw.h)
 
  target_include_directories(SamRH71RtemsSpw
   PUBLIC    ${CMAKE_SOURCE_DIR}/src/RuntimeMocks

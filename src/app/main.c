@@ -22,7 +22,7 @@
 #include <Broker.h>
 #include <system_spec.h>
 #include <drivers_config.h>
-#include <samrh71_rtems_spacewire.h>
+#include <samrh71_rtems_spw.h>
 
 /**
  * @file     main.c
@@ -90,13 +90,15 @@ const size_t test_buffer_size = sizeof(test_buffer);
 
 rtems_task Init(rtems_task_argument argument)
 {
-	Samrh71RtemsSpacewireInit(&driver_private_data, BUS_BUS_1,
-				  DEVICE_NODE_2_UART0,
-				  &Spw_SamRH71_Rtems_Confg_port_1,
-				  &Spw_SamRH71_Rtems_Confg_port_2);
+	(void)argument;
 
-	Samrh71RtemsSpacewareSend(&driver_private_data, test_buffer,
-				  test_buffer_size);
+	samrh71_rtems_spacewire_init(&driver_private_data, BUS_BUS_1,
+				     DEVICE_NODE_2_UART0,
+				     &Spw_SamRH71_Rtems_Confg_port_1,
+				     &Spw_SamRH71_Rtems_Confg_port_2);
+
+	samrh71_rtems_spacewire_send(&driver_private_data, test_buffer,
+				     test_buffer_size);
 
 	(void)rtems_task_delete(RTEMS_SELF);
 }

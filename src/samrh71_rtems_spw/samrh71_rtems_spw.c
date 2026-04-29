@@ -1,4 +1,4 @@
-#include "samrh71_rtems_spacewire.h"
+#include "samrh71_rtems_spw.h"
 
 #include <assert.h>
 #include <string.h>
@@ -76,7 +76,7 @@ static void process_rx_packets(samrh71_rtems_spw_private_data *const self)
 			continue;
 		}
 
-		const uint8_t *data = entry.dataAddress;
+		uint8_t *data = entry.dataAddress;
 		uint32_t length = entry.dataLength;
 
 		if (self->remove_prot_id) {
@@ -198,12 +198,12 @@ void start_poll_task(samrh71_rtems_spw_private_data *const self)
 	assert(rc == RTEMS_SUCCESSFUL);
 
 	rc = rtems_task_start(self->task,
-			      (rtems_task_entry)Samrh71RtemsSpacewarePoll,
+			      (rtems_task_entry)samrh71_rtems_spacewire_poll,
 			      (rtems_task_argument)self);
 	assert(rc == RTEMS_SUCCESSFUL);
 }
 
-void Samrh71RtemsSpacewireInit(
+void samrh71_rtems_spacewire_init(
 	void *private_data, enum SystemBus bus_id, enum SystemDevice device_id,
 	const Spw_SamRH71_Rtems_Conf_T *device_configuration,
 	const Spw_SamRH71_Rtems_Conf_T *remote_device_configuration)
@@ -230,7 +230,7 @@ void Samrh71RtemsSpacewireInit(
 	start_poll_task(self);
 }
 
-void Samrh71RtemsSpacewarePoll(void *private_data)
+void samrh71_rtems_spacewire_poll(void *private_data)
 {
 	samrh71_rtems_spw_private_data *self =
 		(samrh71_rtems_spw_private_data *)private_data;
@@ -270,8 +270,8 @@ void Samrh71RtemsSpacewarePoll(void *private_data)
 	}
 }
 
-void Samrh71RtemsSpacewareSend(void *private_data, const uint8_t *data,
-			       size_t length)
+void samrh71_rtems_spacewire_send(void *private_data, const uint8_t *data,
+				  size_t length)
 {
 	samrh71_rtems_spw_private_data *self =
 		(samrh71_rtems_spw_private_data *)private_data;

@@ -1,5 +1,5 @@
-#ifndef SAMRH71_RTEMS_SPACEWIRE_H
-#define SAMRH71_RTEMS_SPACEWIRE_H
+#ifndef SAMRH71_RTEMS_SPW_H
+#define SAMRH71_RTEMS_SPW_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -96,7 +96,7 @@ typedef struct {
  * @param[in]     device_configuration     Local device configuration.
  * @param[in]     remote_device_configuration  Remote peer configuration (unused).
  */
-void Samrh71RtemsSpacewireInit(
+void samrh71_rtems_spacewire_init(
 	void *private_data, enum SystemBus bus_id, enum SystemDevice device_id,
 	const Spw_SamRH71_Rtems_Conf_T *device_configuration,
 	const Spw_SamRH71_Rtems_Conf_T *remote_device_configuration);
@@ -109,7 +109,7 @@ void Samrh71RtemsSpacewireInit(
  *
  * @param[in,out] private_data  Pointer to @ref Samrh71RtemsSpacewire_PrivateData.
  */
-void Samrh71RtemsSpacewarePoll(void *private_data);
+void samrh71_rtems_spacewire_poll(void *private_data);
 
 /**
  * @brief Transmit @p length bytes of @p data as a single SpaceWire packet.
@@ -121,11 +121,11 @@ void Samrh71RtemsSpacewarePoll(void *private_data);
  * @param[in]     data          Payload to transmit.
  * @param[in]     length        Number of bytes to transmit.
  */
-void Samrh71RtemsSpacewareSend(void *private_data, const uint8_t *data,
-			       size_t length);
+void samrh71_rtems_spacewire_send(void *private_data, const uint8_t *data,
+				  size_t length);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* SAMRH71_RTEMS_SPACEWIRE_H */
+#endif /* SAMRH71_RTEMS_SPW_H */
