@@ -2,6 +2,29 @@ cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
 set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/TASTE-SAMV71-RTEMS-Runtime/toolchains/samv71.cmake)
 project(TASTE-SAMRH71-Drivers VERSION 1.0.0 LANGUAGES C)
 
+add_compile_definitions(N7S_TARGET_SAMRH71F20)
+remove_definitions(-DN7S_TARGET_SAMV71Q21)
+add_compile_definitions(Pmc_PeripheralId_Hsmci=0)
+add_compile_definitions(Pmc_PeripheralId_Spi0=0)
+add_compile_definitions(Pmc_PeripheralId_Spi1=0)
+add_compile_definitions(Pmc_PeripheralId_Usart0=0)
+add_compile_definitions(Pmc_PeripheralId_Usart1=0)
+add_compile_definitions(Pmc_PeripheralId_Usart2=0)
+add_compile_definitions(Pmc_PeripheralId_Twihs0=0)
+add_compile_definitions(Pmc_PeripheralId_Twihs1=0)
+add_compile_definitions(Pmc_PeripheralId_Twihs2=0)
+add_compile_definitions(Pmc_PeripheralId_Uart0=0)
+add_compile_definitions(Pmc_PeripheralId_Uart1=0)
+add_compile_definitions(Pmc_PeripheralId_Uart2=0)
+add_compile_definitions(Pmc_PeripheralId_Uart3=0)
+add_compile_definitions(Pmc_PeripheralId_Uart4=0)
+add_compile_definitions(Pmc_PeripheralId_Dacc=0)
+add_compile_definitions(Pmc_PeripheralId_Ssc=0)
+add_compile_definitions(Pmc_PeripheralId_Afec0=0)
+add_compile_definitions(Pmc_PeripheralId_Afec1=0)
+add_compile_definitions(Pmc_PeripheralId_Aes=0)
+string(REPLACE "-DN7S_TARGET_SAMV71Q21" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -68,7 +91,8 @@ include(Doxygen)
 
 include_directories(SYSTEM
   /opt/rtems/arm-rtems6/atsamv/lib/include
-  /opt/rtems/arm-rtems6/include)
+  /opt/rtems/arm-rtems6/include
+  TASTE-SAMV71-RTEMS-Runtime/src/SamRH71Core)
 
 add_subdirectory(TASTE-Runtime-Common/src/RuntimeMocks)
 add_subdirectory(TASTE-Runtime-Common/src/RuntimeCommon)
@@ -95,5 +119,11 @@ add_subdirectory(TASTE-SAMV71-RTEMS-Runtime/src/Monitor)
 add_subdirectory(TASTE-SAMV71-RTEMS-Runtime/src/ThreadsCommon)
 add_subdirectory(TASTE-SAMV71-RTEMS-Runtime/src/Xdmac)
 add_subdirectory(TASTE-SAMV71-RTEMS-Runtime/src/BootHelper)
+
+add_library(SAMRH71::Pmc ALIAS Samv71Pmc)
+add_library(SAMRH71::Wdt ALIAS Samv71Wdt)
+add_library(SAMRH71::Tic ALIAS Samv71Tic)
+
+add_subdirectory(TASTE-SAMV71-RTEMS-Runtime/src/SamRH71Core)
 
 add_subdirectory(src)

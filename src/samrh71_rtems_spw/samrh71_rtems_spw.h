@@ -21,15 +21,14 @@ extern "C" {
 #define SAMRH71_RTEMS_SPW_RX_DATA_SIZE 1024U
 #endif
 
-
 #ifndef SAMRH71_RTEMS_SPW_TLS_SIZE
 #define SAMRH71_RTEMS_SPW_TLS_SIZE 512
 #endif
 
 #define SAMRH71_RTEMS_SPW_TASK_STACK_SIZE \
 	(8192 > RTEMS_MINIMUM_STACK_SIZE ? 8192 : RTEMS_MINIMUM_STACK_SIZE)
-#define SAMRH71_RTEMS_SPW_TASK_BUFFER_SIZE                                \
-	(RTEMS_TASK_STORAGE_SIZE(SAMRH71_RTEMS_SPW_TASK_STACK_SIZE +           \
+#define SAMRH71_RTEMS_SPW_TASK_BUFFER_SIZE                           \
+	(RTEMS_TASK_STORAGE_SIZE(SAMRH71_RTEMS_SPW_TASK_STACK_SIZE + \
 					 SAMRH71_RTEMS_SPW_TLS_SIZE, \
 				 RTEMS_FLOATING_POINT))
 
@@ -46,8 +45,10 @@ typedef struct {
 	bool rxblock;
 	bool txblock;
 
-	Spw_Rx_RxBufferEntry __attribute__((aligned(32))) rx_info[SAMRH71_RTEMS_SPW_RX_PACKET_COUNT];
-	uint8_t __attribute__((aligned(32))) rx_data[SAMRH71_RTEMS_SPW_RX_DATA_SIZE];
+	Spw_Rx_RxBufferEntry __attribute__((
+		aligned(32))) rx_info[SAMRH71_RTEMS_SPW_RX_PACKET_COUNT];
+	uint8_t __attribute__((
+		aligned(32))) rx_data[SAMRH71_RTEMS_SPW_RX_DATA_SIZE];
 
 	Spw_Tx_SendListEntry __attribute__((aligned(32))) tx_send_list[1];
 

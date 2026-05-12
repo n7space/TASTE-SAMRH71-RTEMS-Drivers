@@ -82,8 +82,8 @@ static void arm_rx_buffer(samrh71_rtems_spw_private_data *const self)
 		}
 		Spw_Rx_getStatus(&self->spw.rx, &rxStatus);
 		rtems_task_wake_after(1);
-	} while (linkStatus.linkState != Spw_Link_State_Run
-		 || !rxStatus.isCurrentReceiveBufferActive);
+	} while (linkStatus.linkState != Spw_Link_State_Run ||
+		 !rxStatus.isCurrentReceiveBufferActive);
 }
 
 static void process_rx_packets(samrh71_rtems_spw_private_data *const self)
@@ -126,9 +126,9 @@ void init_pmc()
 
 	const Pmc_PeripheralClkConfig spwClk = {
 		.isPeripheralClkEnabled = true,
-		.isGclkEnabled          = true,
-		.gclkSrc                = Pmc_GclkSrc_Mainck,
-		.gclkPresc              = 0U,
+		.isGclkEnabled = true,
+		.gclkSrc = Pmc_GclkSrc_Mainck,
+		.gclkPresc = 0U,
 	};
 	Pmc_setPeripheralClkConfig(&pmc, Pmc_PeripheralId_Spw0, &spwClk);
 	Pmc_setPeripheralClkConfig(&pmc, Pmc_PeripheralId_Spw1, &spwClk);
@@ -136,35 +136,35 @@ void init_pmc()
 
 void init_matrix()
 {
-  // Configure Matrix
-  // Workaround for Hardware bug related to memory access on SAMRH71F20
-  // impacts peripherals using DMA: Mcan, Xdmac, Gmac and SpaceWire
-  // details in document DS80000875D - Rad-Hard 32-bit Arm Cortex-M7 Microcontroller
-  // for Aerospace Applications Errata Sheet
-  // Erratum number 11
-  Matrix matrix;
-  Matrix_init(&matrix, Matrix_getDeviceBaseAddress());
+	// Configure Matrix
+	// Workaround for Hardware bug related to memory access on SAMRH71F20
+	// impacts peripherals using DMA: Mcan, Xdmac, Gmac and SpaceWire
+	// details in document DS80000875D - Rad-Hard 32-bit Arm Cortex-M7 Microcontroller
+	// for Aerospace Applications Errata Sheet
+	// Erratum number 11
+	Matrix matrix;
+	Matrix_init(&matrix, Matrix_getDeviceBaseAddress());
 
-  const Matrix_Slave flexramSlaves[] = {
-    Matrix_Slave_Flexram0,
-    Matrix_Slave_Flexram1,
-    Matrix_Slave_Flexram2,
-  };
-  const Matrix_SlaveRegionProtectionConfig config = {
-    .isPrivilegedRegionUserWriteAllowed = true,
-    .isPrivilegedRegionUserReadAllowed = true,
-    .regionSplitOffset = Matrix_Size_128MB,
-    .regionOrder = Matrix_RegionSplitOrder_UpperPrivilegedLowerUser,
-  };
+	const Matrix_Slave flexramSlaves[] = {
+		Matrix_Slave_Flexram0,
+		Matrix_Slave_Flexram1,
+		Matrix_Slave_Flexram2,
+	};
+	const Matrix_SlaveRegionProtectionConfig config = {
+		.isPrivilegedRegionUserWriteAllowed = true,
+		.isPrivilegedRegionUserReadAllowed = true,
+		.regionSplitOffset = Matrix_Size_128MB,
+		.regionOrder = Matrix_RegionSplitOrder_UpperPrivilegedLowerUser,
+	};
 
-  for (uint32_t i = 0; i < 3; i++)
-  {
-    for (uint32_t j = 0; j < (uint32_t)Matrix_ProtectedRegionId_Count; j++)
-    {
-      Matrix_setSlaveRegionProtectionConfig(
-        &matrix, flexramSlaves[i], (Matrix_ProtectedRegionId)j, &config);
-    }
-  }
+	for (uint32_t i = 0; i < 3; i++) {
+		for (uint32_t j = 0;
+		     j < (uint32_t)Matrix_ProtectedRegionId_Count; j++) {
+			Matrix_setSlaveRegionProtectionConfig(
+				&matrix, flexramSlaves[i],
+				(Matrix_ProtectedRegionId)j, &config);
+		}
+	}
 }
 
 void init_nvic_irq(samrh71_rtems_spw_private_data *const self)
@@ -176,20 +176,14 @@ void init_nvic_irq(samrh71_rtems_spw_private_data *const self)
 
 	rtems_status_code rc;
 
-	rc = rtems_interrupt_handler_install(
-		SAMRH71_SPW_NVIC_IRQ0,
-		"SPW0",
-		RTEMS_INTERRUPT_SHARED,
-		samrh71_spw_irq_handler,
-		NULL);
+	rc = rtems_interrupt_handler_install(SAMRH71_SPW_NVIC_IRQ0, "SPW0",
+					     RTEMS_INTERRUPT_SHARED,
+					     samrh71_spw_irq_handler, NULL);
 	assert(rc == RTEMS_SUCCESSFUL);
 
-	rc = rtems_interrupt_handler_install(
-		SAMRH71_SPW_NVIC_IRQ1,
-		"SPW1",
-		RTEMS_INTERRUPT_SHARED,
-		samrh71_spw_irq_handler,
-		NULL);
+	rc = rtems_interrupt_handler_install(SAMRH71_SPW_NVIC_IRQ1, "SPW1",
+					     RTEMS_INTERRUPT_SHARED,
+					     samrh71_spw_irq_handler, NULL);
 	assert(rc == RTEMS_SUCCESSFUL);
 
 	Nvic_enableIrq();

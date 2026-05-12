@@ -8,6 +8,8 @@ set(N7S_SPW_SOURCES
     n7s-spw/src/rx.c
     n7s-spw/src/tx.c
     n7s-spw/src/spw.c
+    n7s-spw/arm-bsp/src/Matrix/Matrix.c
+    n7s-spw/arm-bsp/src/Pmc/Pmc.c
 )
 
 add_library(SamRH71RtemsSpw STATIC)
@@ -16,13 +18,16 @@ target_sources(SamRH71RtemsSpw
             ${N7S_SPW_SOURCES}
   PUBLIC    samrh71_rtems_spw.h)
 
- target_include_directories(SamRH71RtemsSpw
+target_include_directories(SamRH71RtemsSpw
   PUBLIC    ${CMAKE_SOURCE_DIR}/src/RuntimeMocks
             ${CMAKE_SOURCE_DIR}/TASTE-SAMV71-RTEMS-Runtime/src
             ${CMAKE_CURRENT_SOURCE_DIR}
             ${CMAKE_CURRENT_SOURCE_DIR}/n7s-spw/src
             ${CMAKE_CURRENT_SOURCE_DIR}/n7s-spw/stubs
-            ${CMAKE_CURRENT_SOURCE_DIR}/n7s-spw/src/microchip_spw)
+            ${CMAKE_CURRENT_SOURCE_DIR}/n7s-spw/src/microchip_spw
+            ${CMAKE_CURRENT_SOURCE_DIR}/n7s-spw/arm-bsp/src/Pmc
+            ${CMAKE_CURRENT_SOURCE_DIR}/n7s-spw/arm-bsp/src/Matrix
+            ${CMAKE_CURRENT_SOURCE_DIR}/n7s-spw/arm-bsp/src/Nvic)
 
 target_link_libraries(SamRH71RtemsSpw
   PRIVATE   common_build_options
