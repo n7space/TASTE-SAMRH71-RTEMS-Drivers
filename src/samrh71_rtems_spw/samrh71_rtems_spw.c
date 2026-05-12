@@ -3,15 +3,30 @@
 #include <assert.h>
 #include <string.h>
 
+#include <Pmc.h>
+#include <Matrix.h>
+#include <Nvic.h>
 #include <rtems.h>
+#include <rtems/irq-extension.h>
 #include <Broker.h>
 
-Spw g_spw;
+#define SAMRH71_SPW_NVIC_IRQ0 65U
+#define SAMRH71_SPW_NVIC_IRQ1 66U
 
-/** Default SPW init bit rate target, 10 Mbit/s */
+static samrh71_rtems_spw_private_data *g_spw_irq_self = NULL;
+
+static void samrh71_spw_irq_handler(void *arg)
+{
+	(void)arg;
+	if (g_spw_irq_self != NULL) {
+		Spw_handleInterrupt(&g_spw_irq_self->spw);
+	}
+}
+
 #define SPW_INIT_BITRATE_HZ 10000000U
-
 #define RX_DRAIN_TIMEOUT 2000000U
+
+#define SPW_PKTRX_ROUTER_PORT 9U
 
 static void spw_tx_callback(void *arg, const Spw_Tx_IrqStatus *const irqStatus)
 {
@@ -48,18 +63,27 @@ static void arm_rx_buffer(samrh71_rtems_spw_private_data *const self)
 		.startCondition = Spw_Rx_StartCondition_StartNow,
 		.startValue = 0U,
 		.rxBufferAddress = self->rx_info,
-		.rxBufferLength = SAMRH71_RTEMS_SPW_RX_PACKET_COUNT,
+		.rxBufferLength = 1U,
 		.rxDataAddress = self->rx_data,
 		.rxDataLength = SAMRH71_RTEMS_SPW_RX_DATA_SIZE,
 	};
 	Spw_Rx_setNextRxBuffer(&self->spw.rx, &rxBufCfg);
 
-	/* Wait until the buffer is active before returning so that TX can be
-     * started without risking packets arrive before the RX is armed. */
-	Spw_Rx_Status status;
+	/* Wait for either link to reach Run state AND the buffer to activate.
+	 * Checking both links allows the cable to be on Link1 or Link2. */
+	Spw_Link_Status linkStatus;
+	Spw_Rx_Status rxStatus;
 	do {
-		Spw_Rx_getStatus(&self->spw.rx, &status);
-	} while (!status.isCurrentReceiveBufferActive);
+		Spw_Link_Status ls2;
+		Spw_Link_getStatus(&self->spw.link[0], &linkStatus);
+		Spw_Link_getStatus(&self->spw.link[1], &ls2);
+		if (ls2.linkState == Spw_Link_State_Run) {
+			linkStatus = ls2;
+		}
+		Spw_Rx_getStatus(&self->spw.rx, &rxStatus);
+		rtems_task_wake_after(1);
+	} while (linkStatus.linkState != Spw_Link_State_Run
+		 || !rxStatus.isCurrentReceiveBufferActive);
 }
 
 static void process_rx_packets(samrh71_rtems_spw_private_data *const self)
@@ -95,10 +119,96 @@ static void process_rx_packets(samrh71_rtems_spw_private_data *const self)
 	}
 }
 
+void init_pmc()
+{
+	Pmc pmc;
+	Pmc_init(&pmc, Pmc_getDeviceRegisterStartAddress());
+
+	const Pmc_PeripheralClkConfig spwClk = {
+		.isPeripheralClkEnabled = true,
+		.isGclkEnabled          = true,
+		.gclkSrc                = Pmc_GclkSrc_Mainck,
+		.gclkPresc              = 0U,
+	};
+	Pmc_setPeripheralClkConfig(&pmc, Pmc_PeripheralId_Spw0, &spwClk);
+	Pmc_setPeripheralClkConfig(&pmc, Pmc_PeripheralId_Spw1, &spwClk);
+}
+
+void init_matrix()
+{
+  // Configure Matrix
+  // Workaround for Hardware bug related to memory access on SAMRH71F20
+  // impacts peripherals using DMA: Mcan, Xdmac, Gmac and SpaceWire
+  // details in document DS80000875D - Rad-Hard 32-bit Arm Cortex-M7 Microcontroller
+  // for Aerospace Applications Errata Sheet
+  // Erratum number 11
+  Matrix matrix;
+  Matrix_init(&matrix, Matrix_getDeviceBaseAddress());
+
+  const Matrix_Slave flexramSlaves[] = {
+    Matrix_Slave_Flexram0,
+    Matrix_Slave_Flexram1,
+    Matrix_Slave_Flexram2,
+  };
+  const Matrix_SlaveRegionProtectionConfig config = {
+    .isPrivilegedRegionUserWriteAllowed = true,
+    .isPrivilegedRegionUserReadAllowed = true,
+    .regionSplitOffset = Matrix_Size_128MB,
+    .regionOrder = Matrix_RegionSplitOrder_UpperPrivilegedLowerUser,
+  };
+
+  for (uint32_t i = 0; i < 3; i++)
+  {
+    for (uint32_t j = 0; j < (uint32_t)Matrix_ProtectedRegionId_Count; j++)
+    {
+      Matrix_setSlaveRegionProtectionConfig(
+        &matrix, flexramSlaves[i], (Matrix_ProtectedRegionId)j, &config);
+    }
+  }
+}
+
+void init_nvic_irq(samrh71_rtems_spw_private_data *const self)
+{
+	g_spw_irq_self = self;
+
+	Nvic_clearInterruptPending(Nvic_Irq_Spw_Irq0);
+	Nvic_clearInterruptPending(Nvic_Irq_Spw_Irq1);
+
+	rtems_status_code rc;
+
+	rc = rtems_interrupt_handler_install(
+		SAMRH71_SPW_NVIC_IRQ0,
+		"SPW0",
+		RTEMS_INTERRUPT_SHARED,
+		samrh71_spw_irq_handler,
+		NULL);
+	assert(rc == RTEMS_SUCCESSFUL);
+
+	rc = rtems_interrupt_handler_install(
+		SAMRH71_SPW_NVIC_IRQ1,
+		"SPW1",
+		RTEMS_INTERRUPT_SHARED,
+		samrh71_spw_irq_handler,
+		NULL);
+	assert(rc == RTEMS_SUCCESSFUL);
+
+	Nvic_enableIrq();
+}
+
 void init_spw_driver(samrh71_rtems_spw_private_data *const self,
 		     const uint8_t txInitDiv, const uint8_t txOperDiv)
 {
-	Spw_init(&g_spw);
+	init_matrix();
+	init_pmc();
+	init_nvic_irq(self);
+
+	Spw_init(&self->spw);
+
+	Spw_Link_reset(&self->spw.link[0]);
+	Spw_Link_reset(&self->spw.link[1]);
+	Spw_Tx_reset(&self->spw.tx);
+	Spw_Rx_reset(&self->spw.rx);
+	rtems_task_wake_after(5);
 	const Spw_Config spwCfg = {
         .link = {
             [0] = {
@@ -116,7 +226,7 @@ void init_spw_driver(samrh71_rtems_spw_private_data *const self,
             [1] = {
                 .txInitDiv               = txInitDiv,
                 .txOperDiv               = txOperDiv,
-                .command                 = 2U, // start
+                .command                 = 3U, // start and listen
                 .escChar                 = 0U,
                 .escEvent1               = { .active = false, .mask = 0U, .value = 0U },
                 .escEvent2               = { .active = false, .mask = 0U, .value = 0U },
@@ -136,7 +246,7 @@ void init_spw_driver(samrh71_rtems_spw_private_data *const self,
             .irqMaskDisable = 0U,
         },
     };
-	Spw_setConfig(&g_spw, &spwCfg);
+	Spw_setConfig(&self->spw, &spwCfg);
 
 	const Spw_TxHandler txHandler = { .callback = spw_tx_callback,
 					  .arg = self };
@@ -187,8 +297,8 @@ void start_poll_task(samrh71_rtems_spw_private_data *const self)
 		.name = rtems_build_name('S', 'P', 'W', 'P'),
 		.initial_priority = 1U,
 		.storage_area = self->task_stack,
-		.storage_size = SAMRH71_RTEMS_SPW_TASK_STACK_SIZE,
-		.maximum_thread_local_storage_size = 0U,
+		.storage_size = SAMRH71_RTEMS_SPW_TASK_BUFFER_SIZE,
+		.maximum_thread_local_storage_size = SAMRH71_RTEMS_SPW_TLS_SIZE,
 		.storage_free = NULL,
 		.initial_modes = RTEMS_PREEMPT,
 		.attributes = RTEMS_DEFAULT_ATTRIBUTES | RTEMS_FLOATING_POINT,
@@ -219,15 +329,23 @@ void samrh71_rtems_spacewire_init(
 
 	self->ip_device_bus_id = bus_id;
 	self->dest_addr = device_configuration->nodeaddr;
+	self->rxblock = true;
+	self->txblock = true;
 	// TODO add handling of optional configs
 
-	// Compute TXINITDIV: fall back to TXINITDIV=19, TODO add handling for this divs
-	const uint8_t txInitDiv = 19U;
-	const uint8_t txOperDiv = 0U; // default max speed
+	const uint8_t txInitDiv = 0U;
+	const uint8_t txOperDiv = 0U;
 
 	init_spw_driver(self, txInitDiv, txOperDiv);
 	init_rtems_synchronization_primitives(self);
 	start_poll_task(self);
+}
+
+static void wait_for_rx_deactivation(samrh71_rtems_spw_private_data *const self)
+{
+	rtems_status_code rc = rtems_semaphore_obtain(
+		self->rx_semaphore, RTEMS_WAIT, RTEMS_NO_TIMEOUT);
+	(void)rc;
 }
 
 void samrh71_rtems_spacewire_poll(void *private_data)
@@ -237,35 +355,7 @@ void samrh71_rtems_spacewire_poll(void *private_data)
 
 	while (true) {
 		arm_rx_buffer(self);
-
-		if (self->rxblock) {
-			/* Blocking mode: wait indefinitely for the RX semaphore released
-             * by the ISR when the buffer deactivates. */
-			rtems_status_code rc = rtems_semaphore_obtain(
-				self->rx_semaphore, RTEMS_WAIT,
-				RTEMS_NO_TIMEOUT);
-			(void)rc;
-		} else {
-			/* Non-blocking fallback: spin up to RX_DRAIN_TIMEOUT cycles to
-             * let the buffer deactivate naturally.  If it does not, force an
-             * abort so we don't stall forever.  Either way we must consume
-             * the semaphore token that will be released on deactivation. */
-			volatile uint32_t timeout = RX_DRAIN_TIMEOUT;
-			while (!self->rx_deactivated && (timeout-- > 0U)) {
-			}
-
-			if (!self->rx_deactivated) {
-				Spw_Rx_abortOngoingPacketRx(&self->spw.rx);
-			}
-
-			/* Wait for the deactivation interrupt (natural or from abort)
-             * to keep the semaphore count balanced for the next iteration. */
-			rtems_status_code rc = rtems_semaphore_obtain(
-				self->rx_semaphore, RTEMS_WAIT,
-				RTEMS_NO_TIMEOUT);
-			(void)rc;
-		}
-
+		wait_for_rx_deactivation(self);
 		process_rx_packets(self);
 	}
 }
@@ -278,9 +368,6 @@ void samrh71_rtems_spacewire_send(void *private_data, const uint8_t *data,
 
 	assert(data != NULL);
 	assert(length > 0U);
-	assert(length <= SAMRH71_RTEMS_SPW_TX_MAX_DATA_SIZE);
-
-	memcpy(self->tx_data, data, length);
 
 	self->tx_done = false;
 
@@ -288,7 +375,7 @@ void samrh71_rtems_spacewire_send(void *private_data, const uint8_t *data,
 		.isEntrySkipped = false,
 		.entryType = Spw_Tx_EntryType_PacketData,
 		.routerByteLength = 1U,
-		.routerByte = { self->dest_addr, 0, 0, 0, 0, 0, 0, 0 },
+		.routerByte = { SPW_PKTRX_ROUTER_PORT, 0, 0, 0, 0, 0, 0, 0 },
 		.startTime = 0U,
 		.escapeCharMask = 0U,
 		.escapeChar = 0U,
@@ -297,7 +384,7 @@ void samrh71_rtems_spacewire_send(void *private_data, const uint8_t *data,
 		.headerAddress = NULL,
 		.calculateDataCrc = false,
 		.dataSize = (uint32_t)length,
-		.dataAddress = self->tx_data,
+		.dataAddress = (uint8_t *)(uintptr_t)data,
 		.timeout = 0U,
 	};
 	Spw_Tx_setNextSendListEntry(&self->tx_send_list[0], &entry);
@@ -306,7 +393,7 @@ void samrh71_rtems_spacewire_send(void *private_data, const uint8_t *data,
 		.sendCondition = Spw_Tx_SendCondition_StartNow,
 		.sendListLength = 1U,
 		.sendListAddress = self->tx_send_list,
-		.routerByte = { 0U, 0U, 0U, 0U },
+		.routerByte = { self->dest_addr, 0U, 0U, 0U },
 		.abortOngoingSendListWhenStarted = false,
 		.startValue = 0U,
 	};
