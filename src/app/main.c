@@ -53,36 +53,18 @@ deliver_function interface_to_deliver_function[INTERFACE_MAX_ID];
 static samrh71_rtems_spw_private_data driver_private_data;
 
 const Spw_SamRH71_Rtems_Conf_T Spw_SamRH71_Rtems_Confg_port_1 = {
-	.devname = { [0 ... 19] = 0x20, [20] = 0x0 },
-	.nodeaddr = 0UL,
-	.corefreq = 0UL,
-	.clockdiv = 0UL,
-	.use_router = FALSE,
+	.link_name = Spw_SamRH71_Rtems_Conf_Link_T_spw0,
+	.destination_link = Spw_SamRH71_Rtems_Conf_Destination_Link_T_spw0,
+	.link_speed = 0UL,
 	.remove_prot_id = FALSE,
-	.rxblock = FALSE,
-	.txblock = FALSE,
-	.exist = { .corefreq = 1,
-		   .clockdiv = 1,
-		   .use_router = 1,
-		   .remove_prot_id = 1,
-		   .rxblock = 1,
-		   .txblock = 1 }
+	.exist = { .link_speed = 1, .remove_prot_id = 1 }
 };
 const Spw_SamRH71_Rtems_Conf_T Spw_SamRH71_Rtems_Confg_port_2 = {
-	.devname = { [0 ... 19] = 0x20, [20] = 0x0 },
-	.nodeaddr = 0UL,
-	.corefreq = 0UL,
-	.clockdiv = 0UL,
-	.use_router = FALSE,
+	.link_name = Spw_SamRH71_Rtems_Conf_Link_T_spw1,
+	.destination_link = Spw_SamRH71_Rtems_Conf_Destination_Link_T_spw0,
+	.link_speed = 0UL,
 	.remove_prot_id = FALSE,
-	.rxblock = FALSE,
-	.txblock = FALSE,
-	.exist = { .corefreq = 1,
-		   .clockdiv = 1,
-		   .use_router = 1,
-		   .remove_prot_id = 1,
-		   .rxblock = 1,
-		   .txblock = 1 }
+	.exist = { .link_speed = 1, .remove_prot_id = 1 }
 };
 
 const uint8_t test_buffer[] = { '\x00', '\xff' };

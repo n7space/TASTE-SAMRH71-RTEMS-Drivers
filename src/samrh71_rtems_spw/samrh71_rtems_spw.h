@@ -40,10 +40,9 @@ typedef struct {
 	Spw spw;
 	enum SystemBus ip_device_bus_id;
 
-	uint8_t dest_addr;
+	uint8_t link_idx; // Local link index (0=SPW_LINK_1, 1=SPW_LINK_2)
+	uint8_t dest_addr; // Router port to route TX out (1=Link1, 2=Link2)
 	bool remove_prot_id;
-	bool rxblock;
-	bool txblock;
 
 	Spw_Rx_RxBufferEntry __attribute__((
 		aligned(32))) rx_info[SAMRH71_RTEMS_SPW_RX_PACKET_COUNT];

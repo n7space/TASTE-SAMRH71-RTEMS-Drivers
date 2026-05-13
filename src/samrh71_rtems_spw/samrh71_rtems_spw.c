@@ -12,6 +12,8 @@
 
 #define SAMRH71_SPW_NVIC_IRQ0 65U
 #define SAMRH71_SPW_NVIC_IRQ1 66U
+#define SPW_PKTRX_ROUTER_PORT 9U
+#define MAINCK_FREQ 10000000U
 
 static samrh71_rtems_spw_private_data *g_spw_irq_self = NULL;
 
@@ -22,11 +24,6 @@ static void samrh71_spw_irq_handler(void *arg)
 		Spw_handleInterrupt(&g_spw_irq_self->spw);
 	}
 }
-
-#define SPW_INIT_BITRATE_HZ 10000000U
-#define RX_DRAIN_TIMEOUT 2000000U
-
-#define SPW_PKTRX_ROUTER_PORT 9U
 
 static void spw_tx_callback(void *arg, const Spw_Tx_IrqStatus *const irqStatus)
 {
@@ -69,17 +66,11 @@ static void arm_rx_buffer(samrh71_rtems_spw_private_data *const self)
 	};
 	Spw_Rx_setNextRxBuffer(&self->spw.rx, &rxBufCfg);
 
-	/* Wait for either link to reach Run state AND the buffer to activate.
-	 * Checking both links allows the cable to be on Link1 or Link2. */
 	Spw_Link_Status linkStatus;
 	Spw_Rx_Status rxStatus;
 	do {
-		Spw_Link_Status ls2;
-		Spw_Link_getStatus(&self->spw.link[0], &linkStatus);
-		Spw_Link_getStatus(&self->spw.link[1], &ls2);
-		if (ls2.linkState == Spw_Link_State_Run) {
-			linkStatus = ls2;
-		}
+		Spw_Link_getStatus(&self->spw.link[self->link_idx],
+				   &linkStatus);
 		Spw_Rx_getStatus(&self->spw.rx, &rxStatus);
 		rtems_task_wake_after(1);
 	} while (linkStatus.linkState != Spw_Link_State_Run ||
@@ -190,7 +181,8 @@ void init_nvic_irq(samrh71_rtems_spw_private_data *const self)
 }
 
 void init_spw_driver(samrh71_rtems_spw_private_data *const self,
-		     const uint8_t txInitDiv, const uint8_t txOperDiv)
+		     const uint8_t link_idx, const uint8_t txInitDiv,
+		     const uint8_t txOperDiv)
 {
 	init_matrix();
 	init_pmc();
@@ -203,43 +195,48 @@ void init_spw_driver(samrh71_rtems_spw_private_data *const self,
 	Spw_Tx_reset(&self->spw.tx);
 	Spw_Rx_reset(&self->spw.rx);
 	rtems_task_wake_after(5);
+
+	/* Only the configured link is started (command=3).
+	 * The other link is kept disabled (command=0). */
+	const Spw_Link_Config activeLinkCfg = {
+		.txInitDiv = txInitDiv,
+		.txOperDiv = txOperDiv,
+		.command = 3U,
+		.escChar = 0U,
+		.escEvent1 = { .active = false, .mask = 0U, .value = 0U },
+		.escEvent2 = { .active = false, .mask = 0U, .value = 0U },
+		.distributedIrqToEnable = 0U,
+		.distributedIrqToDisable = 0U,
+		.distributedAckIrqToEnable = 0U,
+		.distributedAckIrqToDisable = 0U,
+	};
+	const Spw_Link_Config disabledLinkCfg = {
+		.txInitDiv = txInitDiv,
+		.txOperDiv = txOperDiv,
+		.command = 0U,
+		.escChar = 0U,
+		.escEvent1 = { .active = false, .mask = 0U, .value = 0U },
+		.escEvent2 = { .active = false, .mask = 0U, .value = 0U },
+		.distributedIrqToEnable = 0U,
+		.distributedIrqToDisable = 0U,
+		.distributedAckIrqToEnable = 0U,
+		.distributedAckIrqToDisable = 0U,
+	};
 	const Spw_Config spwCfg = {
-        .link = {
-            [0] = {
-                .txInitDiv               = txInitDiv,
-                .txOperDiv               = txOperDiv,
-                .command                 = 3U, // start and listean
-                .escChar                 = 0U,
-                .escEvent1               = { .active = false, .mask = 0U, .value = 0U },
-                .escEvent2               = { .active = false, .mask = 0U, .value = 0U },
-                .distributedIrqToEnable  = 0U,
-                .distributedIrqToDisable = 0U,
-                .distributedAckIrqToEnable  = 0U,
-                .distributedAckIrqToDisable = 0U,
-            },
-            [1] = {
-                .txInitDiv               = txInitDiv,
-                .txOperDiv               = txOperDiv,
-                .command                 = 3U, // start and listen
-                .escChar                 = 0U,
-                .escEvent1               = { .active = false, .mask = 0U, .value = 0U },
-                .escEvent2               = { .active = false, .mask = 0U, .value = 0U },
-                .distributedIrqToEnable  = 0U,
-                .distributedIrqToDisable = 0U,
-                .distributedAckIrqToEnable  = 0U,
-                .distributedAckIrqToDisable = 0U,
-            },
-        },
-        .rx = {
-            .overrunningPacketPolicy = Spw_Rx_OverrunningPacketPolicy_Stall,
-            .irqMaskEnable           = 0U,
-            .irqMaskDisable          = 0U,
-        },
-        .tx = {
-            .irqMaskEnable  = 0U,
-            .irqMaskDisable = 0U,
-        },
-    };
+		.link = {
+			[0] = (link_idx == 0U) ? activeLinkCfg : disabledLinkCfg,
+			[1] = (link_idx == 1U) ? activeLinkCfg : disabledLinkCfg,
+		},
+		.rx = {
+			.overrunningPacketPolicy = Spw_Rx_OverrunningPacketPolicy_Stall,
+			.irqMaskEnable           = 0U,
+			.irqMaskDisable          = 0U,
+		},
+		.tx = {
+			.irqMaskEnable  = 0U,
+			.irqMaskDisable = 0U,
+		},
+	};
 	Spw_setConfig(&self->spw, &spwCfg);
 
 	const Spw_TxHandler txHandler = { .callback = spw_tx_callback,
@@ -322,15 +319,27 @@ void samrh71_rtems_spacewire_init(
 	assert(device_configuration != NULL);
 
 	self->ip_device_bus_id = bus_id;
-	self->dest_addr = device_configuration->nodeaddr;
-	self->rxblock = true;
-	self->txblock = true;
-	// TODO add handling of optional configs
+	self->link_idx = (uint8_t)device_configuration->link_name;
+	self->dest_addr =
+		(uint8_t)(device_configuration->destination_link + 1U);
+	self->remove_prot_id =
+		device_configuration->exist.remove_prot_id ?
+			(bool)device_configuration->remove_prot_id :
+			false;
 
-	const uint8_t txInitDiv = 0U;
-	const uint8_t txOperDiv = 0U;
+	// SpaceWire standard requires 10 Mbit/s init rate.
+	const uint8_t txInitDiv = 1U;
 
-	init_spw_driver(self, txInitDiv, txOperDiv);
+	// default operational speed: 10 Mbit/s
+	uint8_t txOperDiv = 1U;
+	if (device_configuration->exist.link_speed &&
+	    device_configuration->link_speed > 0U) {
+		txOperDiv = (uint8_t)((2U * MAINCK_FREQ /
+				       device_configuration->link_speed) -
+				      1U);
+	}
+
+	init_spw_driver(self, self->link_idx, txInitDiv, txOperDiv);
 	init_rtems_synchronization_primitives(self);
 	start_poll_task(self);
 }
@@ -385,7 +394,7 @@ void samrh71_rtems_spacewire_send(void *private_data, const uint8_t *data,
 
 	const Spw_Tx_SendListConfig txListCfg = {
 		.sendCondition = Spw_Tx_SendCondition_StartNow,
-		.sendListLength = 1U,
+		.sendListLength = SAMRH71_RTEMS_SPW_RX_PACKET_COUNT,
 		.sendListAddress = self->tx_send_list,
 		.routerByte = { self->dest_addr, 0U, 0U, 0U },
 		.abortOngoingSendListWhenStarted = false,
@@ -393,9 +402,7 @@ void samrh71_rtems_spacewire_send(void *private_data, const uint8_t *data,
 	};
 	Spw_Tx_setNextSendList(&self->spw.tx, &txListCfg);
 
-	if (self->txblock) {
-		rtems_status_code rc = rtems_semaphore_obtain(
-			self->tx_semaphore, RTEMS_WAIT, RTEMS_NO_TIMEOUT);
-		(void)rc;
-	}
+	rtems_status_code rc = rtems_semaphore_obtain(
+		self->tx_semaphore, RTEMS_WAIT, RTEMS_NO_TIMEOUT);
+	(void)rc;
 }

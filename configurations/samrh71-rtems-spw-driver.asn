@@ -1,20 +1,16 @@
 SAMRH71-RTEMS-SPW-DRIVER DEFINITIONS AUTOMATIC TAGS ::= BEGIN
 
-Spw-SamRH71-Rtems-Conf-Core-Frequence-T ::= INTEGER (0 .. 4294967295)
+Spw-SamRH71-Rtems-Conf-Link-T    			::= ENUMERATED {spw0, spw1}
 
-Spw-SamRH71-Rtems-Conf-Node-Addr-T ::= INTEGER (0 .. 255)
+Spw-SamRH71-Rtems-Conf-Destination-Link-T    ::= ENUMERATED {spw0, spw1}
 
-Spw-SamRH71-Rtems-Conf-Clock-Division-T ::= INTEGER (0 .. 255)
+Spw-SamRH71-Rtems-Conf-Link-Speed-T ::= INTEGER (0 .. 4294967295)
 
 Spw-SamRH71-Rtems-Conf-T ::= SEQUENCE {
-   devname        IA5String (SIZE (1..20)),
-	nodeaddr			Spw-SamRH71-Rtems-Conf-Node-Addr-T,
-	corefreq			Spw-SamRH71-Rtems-Conf-Core-Frequence-T OPTIONAL,
-	clockdiv			Spw-SamRH71-Rtems-Conf-Clock-Division-T OPTIONAL,
-	use-router		BOOLEAN DEFAULT FALSE,
-	remove-prot-id	BOOLEAN OPTIONAL,
-	rxblock			BOOLEAN OPTIONAL,
-	txblock			BOOLEAN OPTIONAL
+    link-name             	Spw-SamRH71-Rtems-Conf-Link-T,
+	destination-link		Spw-SamRH71-Rtems-Conf-Destination-Link-T,
+	link-speed				Spw-SamRH71-Rtems-Conf-Link-Speed-T OPTIONAL,
+	remove-prot-id			BOOLEAN OPTIONAL
 }
 
 END
