@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <Broker.h>
+
 #include <rtems.h>
 
 #include <drivers_config.h>
@@ -16,10 +18,7 @@ extern "C" {
 #endif
 
 #define SAMRH71_RTEMS_SPW_RX_PACKET_COUNT 1U
-
-#ifndef SAMRH71_RTEMS_SPW_RX_DATA_SIZE
-#define SAMRH71_RTEMS_SPW_RX_DATA_SIZE 1024U
-#endif
+#define SAMRH71_RTEMS_SPW_RX_DATA_SIZE BROKER_BUFFER_SIZE
 
 #ifndef SAMRH71_RTEMS_SPW_TLS_SIZE
 #define SAMRH71_RTEMS_SPW_TLS_SIZE 512
