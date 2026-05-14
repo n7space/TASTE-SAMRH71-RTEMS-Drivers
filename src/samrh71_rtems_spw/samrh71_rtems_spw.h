@@ -25,7 +25,9 @@ extern "C" {
 #endif
 
 #define SAMRH71_RTEMS_SPW_TASK_STACK_SIZE \
-	(8192 > RTEMS_MINIMUM_STACK_SIZE ? 8192 : RTEMS_MINIMUM_STACK_SIZE)
+	((BROKER_BUFFER_SIZE + 1024U) > RTEMS_MINIMUM_STACK_SIZE \
+		 ? (BROKER_BUFFER_SIZE + 1024U) \
+		 : RTEMS_MINIMUM_STACK_SIZE)
 #define SAMRH71_RTEMS_SPW_TASK_BUFFER_SIZE                           \
 	(RTEMS_TASK_STORAGE_SIZE(SAMRH71_RTEMS_SPW_TASK_STACK_SIZE + \
 					 SAMRH71_RTEMS_SPW_TLS_SIZE, \
@@ -54,10 +56,11 @@ typedef struct {
 	rtems_id rx_semaphore;
 
 	rtems_id task;
-	uint8_t task_stack[SAMRH71_RTEMS_SPW_TASK_BUFFER_SIZE];
 
 	volatile bool tx_done;
 	volatile bool rx_deactivated;
+
+	uint8_t task_stack[SAMRH71_RTEMS_SPW_TASK_BUFFER_SIZE];
 } samrh71_rtems_spw_private_data;
 
 /**
