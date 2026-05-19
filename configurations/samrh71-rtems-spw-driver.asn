@@ -4,7 +4,7 @@ Spw-SamRH71-Rtems-Conf-Link-T    			::= ENUMERATED {spw0, spw1}
 
 Spw-SamRH71-Rtems-Conf-Node-Id-T    		::= INTEGER (32 .. 255)
 
-Spw-SamRH71-Rtems-Conf-Link-Speed-T 		::= INTEGER (0 .. 4294967295)
+Spw-SamRH71-Rtems-Conf-Link-Speed-T 		::= ENUMERATED {b2Mbit (2), b8Mbit (8), b12Mbit (12), b24Mbit (24)}
 
 Spw-SamRH71-Rtems-Conf-T ::= SEQUENCE {
 	link-id             	Spw-SamRH71-Rtems-Conf-Link-T,
