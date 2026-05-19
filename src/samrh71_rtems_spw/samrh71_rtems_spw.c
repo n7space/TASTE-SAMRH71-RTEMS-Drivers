@@ -9,6 +9,7 @@
 #include <rtems.h>
 #include <rtems/irq-extension.h>
 #include <Broker.h>
+#include <router.h>
 
 #define SAMRH71_SPW_NVIC_IRQ0 65U
 #define SAMRH71_SPW_NVIC_IRQ1 66U
@@ -69,7 +70,7 @@ static void arm_rx_buffer(samrh71_rtems_spw_private_data *const self)
 	Spw_Link_Status linkStatus;
 	Spw_Rx_Status rxStatus;
 	do {
-		Spw_Link_getStatus(&self->spw.link[self->link_idx],
+		Spw_Link_getStatus(&self->spw.link[self->link_id - 1U],
 				   &linkStatus);
 		Spw_Rx_getStatus(&self->spw.rx, &rxStatus);
 		rtems_task_wake_after(1);
@@ -180,15 +181,38 @@ void init_nvic_irq(samrh71_rtems_spw_private_data *const self)
 	Nvic_enableIrq();
 }
 
+void init_spw_router(const samrh71_rtems_spw_private_data *const self)
+{
+	Spw_Router_init();
+
+	Spw_Router_Config config;
+	config.isTimeoutDisabled = true;
+	config.isFallbackRoutingEnabled = false;
+	config.isLogicalAddressRoutingEnabled = true;
+
+	Spw_Router_setConfig(&config);
+
+	Spw_Router_TableEntry router_entry;
+	router_entry.deleteHeaderByte = true;
+	router_entry.address = SPW_PKTRX_ROUTER_PORT;
+
+	Spw_Router_setTableEntry(self->node_id, &router_entry);
+
+	router_entry.deleteHeaderByte = false;
+	router_entry.address = self->link_id;
+
+	Spw_Router_setTableEntry(self->remote_node_id, &router_entry);
+}
+
 void init_spw_driver(samrh71_rtems_spw_private_data *const self,
-		     const uint8_t link_idx, const uint8_t txInitDiv,
-		     const uint8_t txOperDiv)
+		     const uint8_t txInitDiv, const uint8_t txOperDiv)
 {
 	init_matrix();
 	init_pmc();
 	init_nvic_irq(self);
 
 	Spw_init(&self->spw);
+	init_spw_router(self);
 
 	Spw_Link_reset(&self->spw.link[0]);
 	Spw_Link_reset(&self->spw.link[1]);
@@ -224,8 +248,8 @@ void init_spw_driver(samrh71_rtems_spw_private_data *const self,
 	};
 	const Spw_Config spwCfg = {
 		.link = {
-			[0] = (link_idx == 0U) ? activeLinkCfg : disabledLinkCfg,
-			[1] = (link_idx == 1U) ? activeLinkCfg : disabledLinkCfg,
+			[0] = (self->link_id == 1U) ? activeLinkCfg : disabledLinkCfg,
+			[1] = (self->link_id == 2U) ? activeLinkCfg : disabledLinkCfg,
 		},
 		.rx = {
 			.overrunningPacketPolicy = Spw_Rx_OverrunningPacketPolicy_Stall,
@@ -310,7 +334,6 @@ void samrh71_rtems_spacewire_init(
 	const Spw_SamRH71_Rtems_Conf_T *remote_device_configuration)
 {
 	(void)device_id;
-	(void)remote_device_configuration;
 
 	samrh71_rtems_spw_private_data *self =
 		(samrh71_rtems_spw_private_data *)private_data;
@@ -319,9 +342,9 @@ void samrh71_rtems_spacewire_init(
 	assert(device_configuration != NULL);
 
 	self->ip_device_bus_id = bus_id;
-	self->link_idx = (uint8_t)device_configuration->link_name;
-	self->dest_addr =
-		(uint8_t)(device_configuration->destination_link + 1U);
+	self->link_id = (uint8_t)device_configuration->link_id + 1U;
+	self->node_id = device_configuration->node_id;
+	self->remote_node_id = remote_device_configuration->node_id;
 	self->remove_prot_id =
 		device_configuration->exist.remove_prot_id ?
 			(bool)device_configuration->remove_prot_id :
@@ -339,7 +362,7 @@ void samrh71_rtems_spacewire_init(
 				      1U);
 	}
 
-	init_spw_driver(self, self->link_idx, txInitDiv, txOperDiv);
+	init_spw_driver(self, txInitDiv, txOperDiv);
 	init_rtems_synchronization_primitives(self);
 	start_poll_task(self);
 }
@@ -377,8 +400,8 @@ void samrh71_rtems_spacewire_send(void *private_data, const uint8_t *data,
 	const Spw_Tx_SendListEntryStruct entry = {
 		.isEntrySkipped = false,
 		.entryType = Spw_Tx_EntryType_PacketData,
-		.routerByteLength = 1U,
-		.routerByte = { SPW_PKTRX_ROUTER_PORT, 0, 0, 0, 0, 0, 0, 0 },
+		.routerByteLength = 0U,
+		.routerByte = { 0, 0, 0, 0, 0, 0, 0, 0 },
 		.startTime = 0U,
 		.escapeCharMask = 0U,
 		.escapeChar = 0U,
@@ -394,9 +417,9 @@ void samrh71_rtems_spacewire_send(void *private_data, const uint8_t *data,
 
 	const Spw_Tx_SendListConfig txListCfg = {
 		.sendCondition = Spw_Tx_SendCondition_StartNow,
-		.sendListLength = SAMRH71_RTEMS_SPW_RX_PACKET_COUNT,
+		.sendListLength = 1U,
 		.sendListAddress = self->tx_send_list,
-		.routerByte = { self->dest_addr, 0U, 0U, 0U },
+		.routerByte = { self->remote_node_id, 0U, 0U, 0U },
 		.abortOngoingSendListWhenStarted = false,
 		.startValue = 0U,
 	};

@@ -24,10 +24,10 @@ extern "C" {
 #define SAMRH71_RTEMS_SPW_TLS_SIZE 512
 #endif
 
-#define SAMRH71_RTEMS_SPW_TASK_STACK_SIZE \
-	((BROKER_BUFFER_SIZE + 1024U) > RTEMS_MINIMUM_STACK_SIZE \
-		 ? (BROKER_BUFFER_SIZE + 1024U) \
-		 : RTEMS_MINIMUM_STACK_SIZE)
+#define SAMRH71_RTEMS_SPW_TASK_STACK_SIZE                          \
+	((BROKER_BUFFER_SIZE + 4096U) > RTEMS_MINIMUM_STACK_SIZE ? \
+		 (BROKER_BUFFER_SIZE + 4096U) :                    \
+		 RTEMS_MINIMUM_STACK_SIZE)
 #define SAMRH71_RTEMS_SPW_TASK_BUFFER_SIZE                           \
 	(RTEMS_TASK_STORAGE_SIZE(SAMRH71_RTEMS_SPW_TASK_STACK_SIZE + \
 					 SAMRH71_RTEMS_SPW_TLS_SIZE, \
@@ -41,8 +41,9 @@ typedef struct {
 	Spw spw;
 	enum SystemBus ip_device_bus_id;
 
-	uint8_t link_idx; // Local link index (0=SPW_LINK_1, 1=SPW_LINK_2)
-	uint8_t dest_addr; // Router port to route TX out (1=Link1, 2=Link2)
+	uint8_t link_id;
+	uint8_t node_id;
+	uint8_t remote_node_id;
 	bool remove_prot_id;
 
 	Spw_Rx_RxBufferEntry __attribute__((

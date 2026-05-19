@@ -2,13 +2,13 @@ SAMRH71-RTEMS-SPW-DRIVER DEFINITIONS AUTOMATIC TAGS ::= BEGIN
 
 Spw-SamRH71-Rtems-Conf-Link-T    			::= ENUMERATED {spw0, spw1}
 
-Spw-SamRH71-Rtems-Conf-Destination-Link-T    ::= ENUMERATED {spw0, spw1}
+Spw-SamRH71-Rtems-Conf-Node-Id-T    		::= INTEGER (32 .. 255)
 
-Spw-SamRH71-Rtems-Conf-Link-Speed-T ::= INTEGER (0 .. 4294967295)
+Spw-SamRH71-Rtems-Conf-Link-Speed-T 		::= INTEGER (0 .. 4294967295)
 
 Spw-SamRH71-Rtems-Conf-T ::= SEQUENCE {
-    link-name             	Spw-SamRH71-Rtems-Conf-Link-T,
-	destination-link		Spw-SamRH71-Rtems-Conf-Destination-Link-T,
+	link-id             	Spw-SamRH71-Rtems-Conf-Link-T,
+    node-id             	Spw-SamRH71-Rtems-Conf-Node-Id-T,
 	link-speed				Spw-SamRH71-Rtems-Conf-Link-Speed-T OPTIONAL,
 	remove-prot-id			BOOLEAN OPTIONAL
 }

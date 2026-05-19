@@ -4,6 +4,7 @@ set(N7S_SPW_SOURCES
     n7s-spw/src/microchip_spw/plib_spw_pkttx.c
     n7s-spw/src/microchip_spw/plib_spw_router.c
     n7s-spw/src/microchip_spw/plib_spw_tch.c
+    n7s-spw/src/router.c
     n7s-spw/src/link.c
     n7s-spw/src/rx.c
     n7s-spw/src/tx.c
