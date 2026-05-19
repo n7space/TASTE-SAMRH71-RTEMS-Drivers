@@ -1,7 +1,7 @@
 /**@file
  * This file is part of the TASTE SAMV71 RTEMS Drivers.
  *
- * @copyright 2025 N7 Space Sp. z o.o.
+ * @copyright 2026 N7 Space Sp. z o.o.
  *
  * Licensed under the ESA Public License (ESA-PL) Permissive (Type 3),
  * Version 2.4 (the "License");
@@ -53,15 +53,13 @@ deliver_function interface_to_deliver_function[INTERFACE_MAX_ID];
 static samrh71_rtems_spw_private_data driver_private_data;
 
 const Spw_SamRH71_Rtems_Conf_T Spw_SamRH71_Rtems_Confg_port_1 = {
-	.link_name = Spw_SamRH71_Rtems_Conf_Link_T_spw0,
-	.destination_link = Spw_SamRH71_Rtems_Conf_Destination_Link_T_spw0,
+	.node_id = 35,
 	.link_speed = 0UL,
 	.remove_prot_id = FALSE,
 	.exist = { .link_speed = 1, .remove_prot_id = 1 }
 };
 const Spw_SamRH71_Rtems_Conf_T Spw_SamRH71_Rtems_Confg_port_2 = {
-	.link_name = Spw_SamRH71_Rtems_Conf_Link_T_spw1,
-	.destination_link = Spw_SamRH71_Rtems_Conf_Destination_Link_T_spw0,
+	.node_id = 34,
 	.link_speed = 0UL,
 	.remove_prot_id = FALSE,
 	.exist = { .link_speed = 1, .remove_prot_id = 1 }

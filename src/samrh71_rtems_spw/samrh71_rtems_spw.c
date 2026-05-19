@@ -14,9 +14,15 @@
 #define SAMRH71_SPW_NVIC_IRQ0 65U
 #define SAMRH71_SPW_NVIC_IRQ1 66U
 #define SPW_PKTRX_ROUTER_PORT 9U
-#define MAINCK_FREQ 10000000U
+
+#define MEGA_HZ 1000000u
+
+#ifndef MAIN_CRYSTAL_OSCILLATOR_FREQUENCY
+#define MAIN_CRYSTAL_OSCILLATOR_FREQUENCY (12 * MEGA_HZ)
+#endif
 
 static samrh71_rtems_spw_private_data *g_spw_irq_self = NULL;
+static uint64_t main_clock_frequency = 0;
 
 static void samrh71_spw_irq_handler(void *arg)
 {
@@ -111,10 +117,39 @@ static void process_rx_packets(samrh71_rtems_spw_private_data *const self)
 	}
 }
 
-void init_pmc()
+static uint64_t extract_main_oscillator_frequency(Pmc *const pmc)
+{
+	Pmc_MainckConfig main_clock_config;
+	Pmc_getMainckConfig(pmc, &main_clock_config);
+
+	if (main_clock_config.src == Pmc_MainckSrc_XOsc) {
+		return MAIN_CRYSTAL_OSCILLATOR_FREQUENCY;
+	}
+
+	switch (main_clock_config.rcOscFreq) {
+	case Pmc_RcOscFreq_4M: {
+		return 4 * MEGA_HZ;
+	}
+	case Pmc_RcOscFreq_8M: {
+		return 8 * MEGA_HZ;
+	}
+	case Pmc_RcOscFreq_10M: {
+		return 10 * MEGA_HZ;
+	}
+	case Pmc_RcOscFreq_12M: {
+		return 12 * MEGA_HZ;
+	}
+	}
+
+	return 0;
+}
+
+static void init_pmc()
 {
 	Pmc pmc;
 	Pmc_init(&pmc, Pmc_getDeviceRegisterStartAddress());
+
+	main_clock_frequency = extract_main_oscillator_frequency(&pmc);
 
 	const Pmc_PeripheralClkConfig spwClk = {
 		.isPeripheralClkEnabled = true,
@@ -126,7 +161,7 @@ void init_pmc()
 	Pmc_setPeripheralClkConfig(&pmc, Pmc_PeripheralId_Spw1, &spwClk);
 }
 
-void init_matrix()
+static void init_matrix()
 {
 	// Configure Matrix
 	// Workaround for Hardware bug related to memory access on SAMRH71F20
@@ -159,7 +194,7 @@ void init_matrix()
 	}
 }
 
-void init_nvic_irq(samrh71_rtems_spw_private_data *const self)
+static void init_nvic_irq(samrh71_rtems_spw_private_data *const self)
 {
 	g_spw_irq_self = self;
 
@@ -181,7 +216,7 @@ void init_nvic_irq(samrh71_rtems_spw_private_data *const self)
 	Nvic_enableIrq();
 }
 
-void init_spw_router(const samrh71_rtems_spw_private_data *const self)
+static void init_spw_router(const samrh71_rtems_spw_private_data *const self)
 {
 	Spw_Router_init();
 
@@ -204,8 +239,8 @@ void init_spw_router(const samrh71_rtems_spw_private_data *const self)
 	Spw_Router_setTableEntry(self->remote_node_id, &router_entry);
 }
 
-void init_spw_driver(samrh71_rtems_spw_private_data *const self,
-		     const uint8_t txInitDiv, const uint8_t txOperDiv)
+static void init_spw_driver(samrh71_rtems_spw_private_data *const self,
+			    const uint8_t txInitDiv, const uint8_t txOperDiv)
 {
 	init_matrix();
 	init_pmc();
@@ -283,7 +318,7 @@ void init_spw_driver(samrh71_rtems_spw_private_data *const self,
 	Spw_Rx_setConfig(&self->spw.rx, &rxCfg);
 }
 
-void init_rtems_synchronization_primitives(
+static void init_rtems_synchronization_primitives(
 	samrh71_rtems_spw_private_data *const self)
 {
 	self->tx_done = false;
@@ -304,7 +339,7 @@ void init_rtems_synchronization_primitives(
 	assert(rc == RTEMS_SUCCESSFUL);
 }
 
-void start_poll_task(samrh71_rtems_spw_private_data *const self)
+static void start_poll_task(samrh71_rtems_spw_private_data *const self)
 {
 	rtems_status_code rc;
 
@@ -350,15 +385,22 @@ void samrh71_rtems_spacewire_init(
 			(bool)device_configuration->remove_prot_id :
 			false;
 
-	// SpaceWire standard requires 10 Mbit/s init rate.
-	const uint8_t txInitDiv = 1U;
+	// SpaceWire standard requires init rate <= 10 Mbit/s.
+	// DIV = ceil(2 * SpWCLK / bitrate) - 1  (ceiling ensures rate never exceeds target)
+	const uint64_t init_bitrate = 10U * MEGA_HZ;
+	const uint8_t txInitDiv =
+		(uint8_t)(((2U * main_clock_frequency + init_bitrate - 1U) /
+			   init_bitrate) -
+			  1U);
 
-	// default operational speed: 10 Mbit/s
-	uint8_t txOperDiv = 1U;
+	// default operational speed: same as init (10 Mbit/s)
+	uint8_t txOperDiv = txInitDiv;
 	if (device_configuration->exist.link_speed &&
 	    device_configuration->link_speed > 0U) {
-		txOperDiv = (uint8_t)((2U * MAINCK_FREQ /
-				       device_configuration->link_speed) -
+		const uint64_t oper_bitrate = device_configuration->link_speed * MEGA_HZ;
+		txOperDiv = (uint8_t)(((2U * main_clock_frequency +
+					oper_bitrate - 1U) /
+				       oper_bitrate) -
 				      1U);
 	}
 
