@@ -15,6 +15,10 @@
 #define SAMRH71_SPW_NVIC_IRQ1 66U
 #define SPW_PKTRX_ROUTER_PORT 9U
 
+#define SPW_PKTRX_BUFFER_LENGTH 1U
+
+#define SPW_LINK_START_AND_LISTEN_COMMAND 3U
+
 #define MEGA_HZ 1000000u
 
 #ifndef MAIN_CRYSTAL_OSCILLATOR_FREQUENCY
@@ -67,7 +71,7 @@ static void arm_rx_buffer(samrh71_rtems_spw_private_data *const self)
 		.startCondition = Spw_Rx_StartCondition_StartNow,
 		.startValue = 0U,
 		.rxBufferAddress = self->rx_info,
-		.rxBufferLength = 1U,
+		.rxBufferLength = SPW_PKTRX_BUFFER_LENGTH,
 		.rxDataAddress = self->rx_data,
 		.rxDataLength = SAMRH71_RTEMS_SPW_RX_DATA_SIZE,
 	};
@@ -144,7 +148,7 @@ static uint64_t extract_main_oscillator_frequency(Pmc *const pmc)
 	return 0;
 }
 
-static void init_pmc()
+static void init_pmc(const samrh71_rtems_spw_private_data *const self)
 {
 	Pmc pmc;
 	Pmc_init(&pmc, Pmc_getDeviceRegisterStartAddress());
@@ -157,8 +161,15 @@ static void init_pmc()
 		.gclkSrc = Pmc_GclkSrc_Mainck,
 		.gclkPresc = 0U,
 	};
+
+	// Main spw peripheral clock, always active
 	Pmc_setPeripheralClkConfig(&pmc, Pmc_PeripheralId_Spw0, &spwClk);
-	Pmc_setPeripheralClkConfig(&pmc, Pmc_PeripheralId_Spw1, &spwClk);
+
+	// Configure optional spw peripheral clock for Link 2
+	if (self->link_id == 2U) {
+		Pmc_setPeripheralClkConfig(&pmc, Pmc_PeripheralId_Spw1,
+					   &spwClk);
+	}
 }
 
 static void init_matrix()
@@ -243,7 +254,7 @@ static void init_spw_driver(samrh71_rtems_spw_private_data *const self,
 			    const uint8_t txInitDiv, const uint8_t txOperDiv)
 {
 	init_matrix();
-	init_pmc();
+	init_pmc(self);
 	init_nvic_irq(self);
 
 	Spw_init(&self->spw);
@@ -255,12 +266,12 @@ static void init_spw_driver(samrh71_rtems_spw_private_data *const self,
 	Spw_Rx_reset(&self->spw.rx);
 	rtems_task_wake_after(5);
 
-	/* Only the configured link is started (command=3).
-	 * The other link is kept disabled (command=0). */
+	// Only the configured link is started (command=3).
+	// The other link is kept disabled (command=0).
 	const Spw_Link_Config activeLinkCfg = {
 		.txInitDiv = txInitDiv,
 		.txOperDiv = txOperDiv,
-		.command = 3U,
+		.command = SPW_LINK_START_AND_LISTEN_COMMAND,
 		.escChar = 0U,
 		.escEvent1 = { .active = false, .mask = 0U, .value = 0U },
 		.escEvent2 = { .active = false, .mask = 0U, .value = 0U },
@@ -397,7 +408,8 @@ void samrh71_rtems_spacewire_init(
 	uint8_t txOperDiv = txInitDiv;
 	if (device_configuration->exist.link_speed &&
 	    device_configuration->link_speed > 0U) {
-		const uint64_t oper_bitrate = device_configuration->link_speed * MEGA_HZ;
+		const uint64_t oper_bitrate =
+			device_configuration->link_speed * MEGA_HZ;
 		txOperDiv = (uint8_t)(((2U * main_clock_frequency +
 					oper_bitrate - 1U) /
 				       oper_bitrate) -
