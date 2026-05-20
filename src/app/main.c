@@ -1,0 +1,129 @@
+/**@file
+ * This file is part of the TASTE SAMV71 RTEMS Drivers.
+ *
+ * @copyright 2026 N7 Space Sp. z o.o.
+ *
+ * Licensed under the ESA Public License (ESA-PL) Permissive (Type 3),
+ * Version 2.4 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://essr.esa.int/license/list
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <rtems.h>
+
+#include <Broker.h>
+#include <system_spec.h>
+#include <drivers_config.h>
+#include <samrh71_rtems_spw.h>
+
+/**
+ * @file     main.c
+ * @brief    File to check if drivers code can be properly compiled and linked.
+ */
+
+#define RUNTIME_TASK_COUNT (1 + 3 + 0)
+#define RUNTIME_FUNCTION_COUNT (1 + 2 + (0 * 2))
+
+#define PROVIDED_INTERFACE_COUNT (0 + 1 + 1 + 1)
+
+#define MAX_TLS_SIZE                                             \
+	RTEMS_ALIGN_UP(((64 > (8 * PROVIDED_INTERFACE_COUNT)) ?  \
+				64 :                             \
+				(8 * PROVIDED_INTERFACE_COUNT)), \
+		       RTEMS_TASK_STORAGE_ALIGNMENT)
+
+#define TASK_ATTRIBUTES RTEMS_DEFAULT_ATTRIBUTES
+
+#define TASK_STORAGE_SIZE                                                \
+	RTEMS_TASK_STORAGE_SIZE(MAX_TLS_SIZE + RTEMS_MINIMUM_STACK_SIZE, \
+				TASK_ATTRIBUTES)
+
+rtems_id broker_Semaphore;
+enum PacketizerCfg bus_to_packetizer_cfg[SYSTEM_BUSES_NUMBER];
+deliver_function interface_to_deliver_function[INTERFACE_MAX_ID];
+
+static samrh71_rtems_spw_private_data driver_private_data;
+
+const Spw_SamRH71_Rtems_Conf_T Spw_SamRH71_Rtems_Confg_port_1 = {
+	.node_id = 35,
+	.link_speed = 0UL,
+	.remove_prot_id = FALSE,
+	.exist = { .link_speed = 1, .remove_prot_id = 1 }
+};
+const Spw_SamRH71_Rtems_Conf_T Spw_SamRH71_Rtems_Confg_port_2 = {
+	.node_id = 34,
+	.link_speed = 0UL,
+	.remove_prot_id = FALSE,
+	.exist = { .link_speed = 1, .remove_prot_id = 1 }
+};
+
+const uint8_t test_buffer[] = { '\x00', '\xff' };
+const size_t test_buffer_size = sizeof(test_buffer);
+
+rtems_task Init(rtems_task_argument argument)
+{
+	(void)argument;
+
+	samrh71_rtems_spacewire_init(&driver_private_data, BUS_BUS_1,
+				     DEVICE_NODE_2_UART0,
+				     &Spw_SamRH71_Rtems_Confg_port_1,
+				     &Spw_SamRH71_Rtems_Confg_port_2);
+
+	samrh71_rtems_spacewire_send(&driver_private_data, test_buffer,
+				     test_buffer_size);
+
+	(void)rtems_task_delete(RTEMS_SELF);
+}
+
+#define CONFIGURE_APPLICATION_NEEDS_CLOCK_DRIVER
+
+#define CONFIGURE_MAXIMUM_PROCESSORS 1
+
+#define CONFIGURE_MAXIMUM_BARRIERS 0
+
+#define CONFIGURE_MAXIMUM_MESSAGE_QUEUES RUNTIME_TASK_COUNT
+
+#define CONFIGURE_MAXIMUM_PARTITIONS 0
+
+#define CONFIGURE_MAXIMUM_PERIODS 0
+
+#define CONFIGURE_MAXIMUM_SEMAPHORES RUNTIME_FUNCTION_COUNT
+
+#define CONFIGURE_MAXIMUM_TASKS RUNTIME_TASK_COUNT
+
+#define CONFIGURE_MINIMUM_TASKS_WITH_USER_PROVIDED_STORAGE \
+	CONFIGURE_MAXIMUM_TASKS
+
+#define CONFIGURE_MAXIMUM_TIMERS RUNTIME_TASK_COUNT
+
+#define CONFIGURE_MAXIMUM_USER_EXTENSIONS 0
+
+#define CONFIGURE_MICROSECONDS_PER_TICK 1000
+
+#define CONFIGURE_MAXIMUM_FILE_DESCRIPTORS 0
+
+#define CONFIGURE_DISABLE_NEWLIB_REENTRANCY
+
+#define CONFIGURE_APPLICATION_DISABLE_FILESYSTEM
+
+#define CONFIGURE_MAXIMUM_THREAD_LOCAL_STORAGE_SIZE MAX_TLS_SIZE
+
+#define CONFIGURE_RTEMS_INIT_TASKS_TABLE
+
+#define CONFIGURE_INIT_TASK_ATTRIBUTES TASK_ATTRIBUTES | RTEMS_FLOATING_POINT
+
+#define CONFIGURE_INIT_TASK_INITIAL_MODES RTEMS_DEFAULT_MODES
+
+#define CONFIGURE_INIT_TASK_CONSTRUCT_STORAGE_SIZE TASK_STORAGE_SIZE
+
+#define CONFIGURE_INIT
+
+#include <rtems/confdefs.h>

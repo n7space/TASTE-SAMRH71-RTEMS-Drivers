@@ -1,0 +1,12 @@
+[submodule "TASTE-SAMV71-RTEMS-Runtime"]
+    path = TASTE-SAMV71-RTEMS-Runtime
+    url = ../TASTE-SAMV71-RTEMS-Runtime.git
+[submodule "TASTE-Runtime-Common"]
+    path = TASTE-Runtime-Common
+    url = ../TASTE-Runtime-Common.git
+[submodule "src/samrh71_rtems_spw/n7s-spw"]
+    path = src/samrh71_rtems_spw/n7s-spw
+    url = ../n7s-spw.git
+[submodule "cmake-tools"]
+    path = cmake-tools
+    url = ../cmake-tools.git
