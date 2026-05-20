@@ -59,9 +59,9 @@ flag Spw_SamRH71_Rtems_Conf_Link_Speed_T_IsConstraintValid(
 	const Spw_SamRH71_Rtems_Conf_Link_Speed_T *pVal, int *pErrCode)
 {
 	flag ret = TRUE;
-	ret = ((((((((*(pVal)) == b2Mbit)) || (((*(pVal)) == b8Mbit)))) ||
-		 (((*(pVal)) == b12Mbit)))) ||
-	       (((*(pVal)) == b24Mbit)));
+	ret = ((((((((*(pVal)) == b2Mbit)) || (((*(pVal)) == b10Mbit)))) ||
+		 (((*(pVal)) == b50Mbit)))) ||
+	       (((*(pVal)) == b100Mbit)));
 	*pErrCode = ret ? 0 : ERR_SPW_SAMRH71_RTEMS_CONF_LINK_SPEED_T;
 
 	return ret;

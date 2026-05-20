@@ -5,11 +5,13 @@ target_sources(SamV71RuntimeMocks
             interfaces_info.c
             samrh71-rtems-spw-driver.c
             system_spec.c
+            SamRH71Core.c
   PUBLIC    asn1crt.h
             drivers_config.h
             interfaces_info.h
             samrh71-rtems-spw-driver.h
-            system_spec.h)
+            system_spec.h
+            SamRH71Core.h)
 
 target_include_directories(SamV71RuntimeMocks
   PUBLIC    ${CMAKE_SOURCE_DIR}/TASTE-SAMV71-RTEMS-Runtime/src

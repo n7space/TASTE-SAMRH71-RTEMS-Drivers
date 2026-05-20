@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include <SamRH71Core.h>
 #include <Pmc.h>
 #include <Matrix.h>
 #include <Nvic.h>
@@ -23,12 +24,8 @@
 
 #define MEGA_HZ 1000000u
 
-#ifndef MAIN_CRYSTAL_OSCILLATOR_FREQUENCY
-#define MAIN_CRYSTAL_OSCILLATOR_FREQUENCY (12 * MEGA_HZ)
-#endif
-
 static samrh71_rtems_spw_private_data *g_spw_irq_self = NULL;
-static uint64_t main_clock_frequency = 0;
+static uint64_t master_clock_frequency = 0;
 
 static void samrh71_spw_irq_handler(void *arg)
 {
@@ -123,45 +120,16 @@ static void process_rx_packets(samrh71_rtems_spw_private_data *const self)
 	}
 }
 
-static uint64_t extract_main_oscillator_frequency(Pmc *const pmc)
-{
-	Pmc_MainckConfig main_clock_config;
-	Pmc_getMainckConfig(pmc, &main_clock_config);
-
-	if (main_clock_config.src == Pmc_MainckSrc_XOsc) {
-		return MAIN_CRYSTAL_OSCILLATOR_FREQUENCY;
-	}
-
-	switch (main_clock_config.rcOscFreq) {
-	case Pmc_RcOscFreq_4M: {
-		return 4 * MEGA_HZ;
-	}
-	case Pmc_RcOscFreq_8M: {
-		return 8 * MEGA_HZ;
-	}
-	case Pmc_RcOscFreq_10M: {
-		return 10 * MEGA_HZ;
-	}
-	case Pmc_RcOscFreq_12M: {
-		return 12 * MEGA_HZ;
-	}
-	}
-
-	return 0;
-}
-
 static void init_pmc(const samrh71_rtems_spw_private_data *const self)
 {
 	Pmc pmc;
 	Pmc_init(&pmc, Pmc_getDeviceRegisterStartAddress());
 
-	main_clock_frequency = extract_main_oscillator_frequency(&pmc);
-
 	const Pmc_PeripheralClkConfig spwClk = {
 		.isPeripheralClkEnabled = true,
 		.isGclkEnabled = true,
-		.gclkSrc = Pmc_GclkSrc_Mainck,
-		.gclkPresc = 0U,
+		.gclkSrc = Pmc_GclkSrc_Masterck,
+		.gclkPresc = 0U, // this is a divider, leave it to zero
 	};
 
 	// Main spw peripheral clock, always active
@@ -415,11 +383,13 @@ void samrh71_rtems_spacewire_init(
 			(bool)device_configuration->remove_prot_id :
 			false;
 
+	master_clock_frequency = SamRH71Core_GetMainClockFrequency();
+
 	// SpaceWire standard requires init rate 10 Mbit/s.
-	// DIV = ceil(2 * SpWCLK / bitrate) - 1  (ceiling ensures rate never exceeds target)
 	const uint64_t init_bitrate = 10U * MEGA_HZ;
+	assert(init_bitrate <= 2U * master_clock_frequency);
 	const uint8_t txInitDiv =
-		(uint8_t)(((2U * main_clock_frequency + init_bitrate - 1U) /
+		(uint8_t)(((2U * master_clock_frequency + init_bitrate - 1U) /
 			   init_bitrate) -
 			  1U);
 
@@ -428,8 +398,9 @@ void samrh71_rtems_spacewire_init(
 	if (device_configuration->exist.link_speed &&
 	    device_configuration->link_speed > 0U) {
 		const uint64_t oper_bitrate =
-			device_configuration->link_speed * MEGA_HZ;
-		txOperDiv = (uint8_t)(((2U * main_clock_frequency +
+			(uint64_t)device_configuration->link_speed * MEGA_HZ;
+		assert(oper_bitrate <= 2U * master_clock_frequency);
+		txOperDiv = (uint8_t)(((2U * master_clock_frequency +
 					oper_bitrate - 1U) /
 				       oper_bitrate) -
 				      1U);

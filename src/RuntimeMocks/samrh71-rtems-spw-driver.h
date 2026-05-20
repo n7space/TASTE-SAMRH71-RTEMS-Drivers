@@ -45,19 +45,19 @@ void Spw_SamRH71_Rtems_Conf_Node_Id_T_Initialize(
 	Spw_SamRH71_Rtems_Conf_Node_Id_T *pVal);
 typedef enum {
 	b2Mbit = 2,
-	b8Mbit = 8,
-	b12Mbit = 12,
-	b24Mbit = 24
+	b10Mbit = 10,
+	b50Mbit = 50,
+	b100Mbit = 100
 } Spw_SamRH71_Rtems_Conf_Link_Speed_T;
 
 // please use the following macros to avoid breaking code.
 #define Spw_SamRH71_Rtems_Conf_Link_Speed_T_b2Mbit b2Mbit
-#define Spw_SamRH71_Rtems_Conf_Link_Speed_T_b8Mbit b8Mbit
-#define Spw_SamRH71_Rtems_Conf_Link_Speed_T_b12Mbit b12Mbit
-#define Spw_SamRH71_Rtems_Conf_Link_Speed_T_b24Mbit b24Mbit
+#define Spw_SamRH71_Rtems_Conf_Link_Speed_T_b10Mbit b10Mbit
+#define Spw_SamRH71_Rtems_Conf_Link_Speed_T_b50Mbit b50Mbit
+#define Spw_SamRH71_Rtems_Conf_Link_Speed_T_b100Mbit b100Mbit
 
 #define ERR_SPW_SAMRH71_RTEMS_CONF_LINK_SPEED_T \
-	11 /*b2Mbit | b8Mbit | b12Mbit | b24Mbit*/
+	11 /*b2Mbit | b10Mbit | b50Mbit | b100Mbit*/
 flag Spw_SamRH71_Rtems_Conf_Link_Speed_T_IsConstraintValid(
 	const Spw_SamRH71_Rtems_Conf_Link_Speed_T *pVal, int *pErrCode);
 
