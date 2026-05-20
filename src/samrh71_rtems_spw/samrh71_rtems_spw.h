@@ -60,6 +60,7 @@ typedef struct {
 
 	volatile bool tx_done;
 	volatile bool rx_deactivated;
+	bool init_ok; // True if hardware reset completed within timeout.
 
 	uint8_t task_stack[SAMRH71_RTEMS_SPW_TASK_BUFFER_SIZE];
 } samrh71_rtems_spw_private_data;
@@ -100,6 +101,15 @@ void samrh71_rtems_spacewire_poll(void *private_data);
  */
 void samrh71_rtems_spacewire_send(void *private_data, const uint8_t *data,
 				  size_t length);
+
+/**
+ * @brief Returns whether hardware initialisation completed successfully.
+ *
+ * @param[in] private_data  Pointer to @ref samrh71_rtems_spw_private_data.
+ * @return true if the SPW link left the ErrorReset state within the timeout
+ *         during initialisation, false otherwise.
+ */
+bool samrh71_rtems_spacewire_is_init_ok(const void *private_data);
 
 #ifdef __cplusplus
 }

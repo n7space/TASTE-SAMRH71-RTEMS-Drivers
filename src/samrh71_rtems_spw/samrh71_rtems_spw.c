@@ -19,6 +19,8 @@
 
 #define SPW_LINK_START_AND_LISTEN_COMMAND 3U
 
+#define SPW_RESET_TIMEOUT_TICKS 100U
+
 #define MEGA_HZ 1000000u
 
 #ifndef MAIN_CRYSTAL_OSCILLATOR_FREQUENCY
@@ -250,6 +252,23 @@ static void init_spw_router(const samrh71_rtems_spw_private_data *const self)
 	Spw_Router_setTableEntry(self->remote_node_id, &router_entry);
 }
 
+static void check_spw_is_init_ok(samrh71_rtems_spw_private_data *const self)
+{
+	// After applying command=3 the link transitions:
+	// ErrorReset -> ErrorWait -> Ready
+	Spw_Link_Status linkStatus;
+	rtems_interval ticks = 0U;
+	do {
+		rtems_task_wake_after(1);
+		ticks++;
+		Spw_Link_getStatus(&self->spw.link[self->link_id - 1U],
+				   &linkStatus);
+	} while (linkStatus.linkState < Spw_Link_State_Ready &&
+		 ticks < SPW_RESET_TIMEOUT_TICKS);
+
+	self->init_ok = (linkStatus.linkState >= Spw_Link_State_Ready);
+}
+
 static void init_spw_driver(samrh71_rtems_spw_private_data *const self,
 			    const uint8_t txInitDiv, const uint8_t txOperDiv)
 {
@@ -264,7 +283,6 @@ static void init_spw_driver(samrh71_rtems_spw_private_data *const self,
 	Spw_Link_reset(&self->spw.link[1]);
 	Spw_Tx_reset(&self->spw.tx);
 	Spw_Rx_reset(&self->spw.rx);
-	rtems_task_wake_after(5);
 
 	// Only the configured link is started (command=3).
 	// The other link is kept disabled (command=0).
@@ -308,6 +326,7 @@ static void init_spw_driver(samrh71_rtems_spw_private_data *const self,
 		},
 	};
 	Spw_setConfig(&self->spw, &spwCfg);
+	check_spw_is_init_ok(self);
 
 	const Spw_TxHandler txHandler = { .callback = spw_tx_callback,
 					  .arg = self };
@@ -396,7 +415,7 @@ void samrh71_rtems_spacewire_init(
 			(bool)device_configuration->remove_prot_id :
 			false;
 
-	// SpaceWire standard requires init rate <= 10 Mbit/s.
+	// SpaceWire standard requires init rate 10 Mbit/s.
 	// DIV = ceil(2 * SpWCLK / bitrate) - 1  (ceiling ensures rate never exceeds target)
 	const uint64_t init_bitrate = 10U * MEGA_HZ;
 	const uint8_t txInitDiv =
@@ -482,4 +501,11 @@ void samrh71_rtems_spacewire_send(void *private_data, const uint8_t *data,
 	rtems_status_code rc = rtems_semaphore_obtain(
 		self->tx_semaphore, RTEMS_WAIT, RTEMS_NO_TIMEOUT);
 	(void)rc;
+}
+
+bool samrh71_rtems_spacewire_is_init_ok(const void *private_data)
+{
+	const samrh71_rtems_spw_private_data *self =
+		(const samrh71_rtems_spw_private_data *)private_data;
+	return self->init_ok;
 }
