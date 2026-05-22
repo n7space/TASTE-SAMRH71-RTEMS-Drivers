@@ -61,7 +61,8 @@ static void spw_rx_callback(void *arg, const Spw_Rx_IrqStatus *const irqStatus)
 	}
 }
 
-static void arm_rx_buffer(samrh71_rtems_spw_private_data *const self)
+static void arm_rx_buffer(samrh71_rtems_spw_private_data *const self,
+			  const uint8_t buf_idx)
 {
 	self->rx_deactivated = false;
 
@@ -69,32 +70,28 @@ static void arm_rx_buffer(samrh71_rtems_spw_private_data *const self)
 		.isPacketSplitAndDeactivationEnabled = false,
 		.startCondition = Spw_Rx_StartCondition_StartNow,
 		.startValue = 0U,
-		.rxBufferAddress = self->rx_info,
+		.rxBufferAddress = self->rx_info[buf_idx],
 		.rxBufferLength = SPW_PKTRX_BUFFER_LENGTH,
-		.rxDataAddress = self->rx_data,
+		.rxDataAddress = self->rx_data[buf_idx],
 		.rxDataLength = SAMRH71_RTEMS_SPW_RX_DATA_SIZE,
 	};
 	Spw_Rx_setNextRxBuffer(&self->spw.rx, &rxBufCfg);
 
-	Spw_Link_Status linkStatus;
 	Spw_Rx_Status rxStatus;
 	do {
-		Spw_Link_getStatus(&self->spw.link[self->link_id - 1U],
-				   &linkStatus);
 		Spw_Rx_getStatus(&self->spw.rx, &rxStatus);
-		rtems_task_wake_after(1);
-	} while (linkStatus.linkState != Spw_Link_State_Run ||
-		 !rxStatus.isCurrentReceiveBufferActive);
+	} while (!rxStatus.isCurrentReceiveBufferActive);
 }
 
-static void process_rx_packets(samrh71_rtems_spw_private_data *const self)
+static void process_rx_packets(samrh71_rtems_spw_private_data *const self,
+			       const uint8_t buf_idx)
 {
 	Spw_Rx_PreviousRxBufferStatus prevStatus;
 	Spw_Rx_getPreviousRxBufferStatus(&self->spw.rx, &prevStatus);
 
 	for (uint16_t i = 0U; i < prevStatus.receivedPackets; i++) {
 		Spw_Rx_RxBufferEntryStruct entry;
-		Spw_Rx_getRxBufferEntry(&self->rx_info[i], &entry);
+		Spw_Rx_getRxBufferEntry(&self->rx_info[buf_idx][i], &entry);
 
 		if (!entry.wasEopReceived || entry.wasEepReceived) {
 			/* Discard malformed packet. */
@@ -319,7 +316,7 @@ static void init_spw_driver(samrh71_rtems_spw_private_data *const self,
 static void init_rtems_synchronization_primitives(
 	samrh71_rtems_spw_private_data *const self)
 {
-	self->tx_done = false;
+	self->tx_done = true; // no previous TX pending on init
 	self->rx_deactivated = false;
 
 	rtems_status_code rc;
@@ -423,10 +420,17 @@ void samrh71_rtems_spacewire_poll(void *private_data)
 	samrh71_rtems_spw_private_data *self =
 		(samrh71_rtems_spw_private_data *)private_data;
 
+	uint8_t fill_idx = 0U;
+	arm_rx_buffer(self, fill_idx);
+
 	while (true) {
-		arm_rx_buffer(self);
 		wait_for_rx_deactivation(self);
-		process_rx_packets(self);
+
+		const uint8_t process_idx = fill_idx;
+		fill_idx = 1U - fill_idx;
+		arm_rx_buffer(self, fill_idx);
+
+		process_rx_packets(self, process_idx);
 	}
 }
 
@@ -439,6 +443,11 @@ void samrh71_rtems_spacewire_send(void *private_data, const uint8_t *data,
 	assert(data != NULL);
 	assert(length > 0U);
 
+	if (!self->tx_done) {
+		rtems_status_code rc = rtems_semaphore_obtain(
+			self->tx_semaphore, RTEMS_WAIT, RTEMS_NO_TIMEOUT);
+		(void)rc;
+	}
 	self->tx_done = false;
 
 	const Spw_Tx_SendListEntryStruct entry = {
@@ -468,10 +477,6 @@ void samrh71_rtems_spacewire_send(void *private_data, const uint8_t *data,
 		.startValue = 0U,
 	};
 	Spw_Tx_setNextSendList(&self->spw.tx, &txListCfg);
-
-	rtems_status_code rc = rtems_semaphore_obtain(
-		self->tx_semaphore, RTEMS_WAIT, RTEMS_NO_TIMEOUT);
-	(void)rc;
 }
 
 bool samrh71_rtems_spacewire_is_init_ok(const void *private_data)
