@@ -61,8 +61,7 @@ static void spw_rx_callback(void *arg, const Spw_Rx_IrqStatus *const irqStatus)
 	}
 }
 
-static void arm_rx_buffer(samrh71_rtems_spw_private_data *const self,
-			  const uint8_t buf_idx)
+static void arm_rx_buffer(samrh71_rtems_spw_private_data *const self)
 {
 	self->rx_deactivated = false;
 
@@ -70,9 +69,9 @@ static void arm_rx_buffer(samrh71_rtems_spw_private_data *const self,
 		.isPacketSplitAndDeactivationEnabled = false,
 		.startCondition = Spw_Rx_StartCondition_StartNow,
 		.startValue = 0U,
-		.rxBufferAddress = self->rx_info[buf_idx],
+		.rxBufferAddress = self->rx_info,
 		.rxBufferLength = SPW_PKTRX_BUFFER_LENGTH,
-		.rxDataAddress = self->rx_data[buf_idx],
+		.rxDataAddress = self->rx_data,
 		.rxDataLength = SAMRH71_RTEMS_SPW_RX_DATA_SIZE,
 	};
 	Spw_Rx_setNextRxBuffer(&self->spw.rx, &rxBufCfg);
@@ -83,15 +82,14 @@ static void arm_rx_buffer(samrh71_rtems_spw_private_data *const self,
 	} while (!rxStatus.isCurrentReceiveBufferActive);
 }
 
-static void process_rx_packets(samrh71_rtems_spw_private_data *const self,
-			       const uint8_t buf_idx)
+static void process_rx_packets(samrh71_rtems_spw_private_data *const self)
 {
 	Spw_Rx_PreviousRxBufferStatus prevStatus;
 	Spw_Rx_getPreviousRxBufferStatus(&self->spw.rx, &prevStatus);
 
 	for (uint16_t i = 0U; i < prevStatus.receivedPackets; i++) {
 		Spw_Rx_RxBufferEntryStruct entry;
-		Spw_Rx_getRxBufferEntry(&self->rx_info[buf_idx][i], &entry);
+		Spw_Rx_getRxBufferEntry(&self->rx_info[i], &entry);
 
 		if (!entry.wasEopReceived || entry.wasEepReceived) {
 			/* Discard malformed packet. */
@@ -316,7 +314,7 @@ static void init_spw_driver(samrh71_rtems_spw_private_data *const self,
 static void init_rtems_synchronization_primitives(
 	samrh71_rtems_spw_private_data *const self)
 {
-	self->tx_done = true; // no previous TX pending on init
+	self->tx_done = true; // No previous TX pending on init.
 	self->rx_deactivated = false;
 
 	rtems_status_code rc;
@@ -420,17 +418,10 @@ void samrh71_rtems_spacewire_poll(void *private_data)
 	samrh71_rtems_spw_private_data *self =
 		(samrh71_rtems_spw_private_data *)private_data;
 
-	uint8_t fill_idx = 0U;
-	arm_rx_buffer(self, fill_idx);
-
 	while (true) {
+		arm_rx_buffer(self);
 		wait_for_rx_deactivation(self);
-
-		const uint8_t process_idx = fill_idx;
-		fill_idx = 1U - fill_idx;
-		arm_rx_buffer(self, fill_idx);
-
-		process_rx_packets(self, process_idx);
+		process_rx_packets(self);
 	}
 }
 
