@@ -46,14 +46,10 @@ typedef struct {
 	uint8_t remote_node_id;
 	bool remove_prot_id;
 
-	/* Double-buffered RX: while one buffer is being processed (and
-	 * Broker_receive_packet may block acquiring the app semaphore), the
-	 * other is already presented to the hardware so remote TX credits keep
-	 * flowing and the remote tx_semaphore is not starved. */
 	Spw_Rx_RxBufferEntry __attribute__((
-		aligned(32))) rx_info[2U][SAMRH71_RTEMS_SPW_RX_PACKET_COUNT];
+		aligned(32))) rx_info[SAMRH71_RTEMS_SPW_RX_PACKET_COUNT];
 	uint8_t __attribute__((
-		aligned(32))) rx_data[2U][SAMRH71_RTEMS_SPW_RX_DATA_SIZE];
+		aligned(32))) rx_data[SAMRH71_RTEMS_SPW_RX_DATA_SIZE];
 
 	Spw_Tx_SendListEntry __attribute__((aligned(32))) tx_send_list[1];
 
@@ -62,7 +58,7 @@ typedef struct {
 
 	rtems_id task;
 
-	volatile bool tx_done;
+	volatile bool tx_done; // true = no TX in progress
 	volatile bool rx_deactivated;
 	bool init_ok; // True if hardware reset completed within timeout.
 
