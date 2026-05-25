@@ -41,6 +41,9 @@ static void spw_tx_callback(void *arg, const Spw_Tx_IrqStatus *const irqStatus)
 		(samrh71_rtems_spw_private_data *)arg;
 
 	if (irqStatus->sendListDeactivatedIrqOccurred) {
+		Spw_Tx_Status status;
+		Spw_Tx_getStatus(&self->spw.tx, &status);
+		
 		self->tx_done = true;
 		rtems_status_code rc =
 			rtems_semaphore_release(self->tx_semaphore);
