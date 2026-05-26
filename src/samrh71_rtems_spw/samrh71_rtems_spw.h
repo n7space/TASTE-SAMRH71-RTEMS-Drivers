@@ -58,7 +58,8 @@ typedef struct {
 
 	rtems_id task;
 
-	volatile bool tx_done;
+	void (*on_tx_timeout)(void *private_data);
+
 	volatile bool rx_deactivated;
 	bool init_ok; // True if hardware reset completed within timeout.
 
@@ -110,6 +111,20 @@ void samrh71_rtems_spacewire_send(void *private_data, const uint8_t *data,
  *         during initialisation, false otherwise.
  */
 bool samrh71_rtems_spacewire_is_init_ok(const void *private_data);
+
+/**
+ * @brief Register a callback invoked when @ref samrh71_rtems_spacewire_send
+ *        times out waiting for the previous TX to complete.
+ *
+ * The callback is called from the send caller's task context with
+ * @p private_data as its argument. The timed-out packet is dropped.
+ * Pass NULL to disable.
+ *
+ * @param[in,out] private_data  Pointer to @ref samrh71_rtems_spw_private_data.
+ * @param[in]     callback      Function to call on TX timeout, or NULL.
+ */
+void samrh71_rtems_spacewire_set_tx_timeout_callback(
+	void *private_data, void (*callback)(void *private_data));
 
 #ifdef __cplusplus
 }

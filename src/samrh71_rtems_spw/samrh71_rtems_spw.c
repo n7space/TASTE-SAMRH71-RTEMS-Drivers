@@ -20,7 +20,8 @@
 
 #define SPW_LINK_START_AND_LISTEN_COMMAND 3U
 
-#define SPW_RESET_TIMEOUT_TICKS 100U
+#define SAMRH71_RTEMS_SPW_RESET_TIMEOUT_TICKS 100U
+#define SAMRH71_RTEMS_SPW_TX_TIMEOUT_SECONDS 10U
 
 #define MEGA_HZ 1000000u
 
@@ -41,7 +42,12 @@ static void spw_tx_callback(void *arg, const Spw_Tx_IrqStatus *const irqStatus)
 		(samrh71_rtems_spw_private_data *)arg;
 
 	if (irqStatus->sendListDeactivatedIrqOccurred) {
-		self->tx_done = true;
+		// Spw_Tx_getStatus invokes TX_UnlockStatus that unlock the SPW TX module
+		// previous buffer status. Needed for next IRQ handling.
+		Spw_Tx_Status status;
+		Spw_Tx_getStatus(&self->spw.tx, &status);
+		(void)status;
+
 		rtems_status_code rc =
 			rtems_semaphore_release(self->tx_semaphore);
 		(void)rc;
@@ -76,15 +82,10 @@ static void arm_rx_buffer(samrh71_rtems_spw_private_data *const self)
 	};
 	Spw_Rx_setNextRxBuffer(&self->spw.rx, &rxBufCfg);
 
-	Spw_Link_Status linkStatus;
 	Spw_Rx_Status rxStatus;
 	do {
-		Spw_Link_getStatus(&self->spw.link[self->link_id - 1U],
-				   &linkStatus);
 		Spw_Rx_getStatus(&self->spw.rx, &rxStatus);
-		rtems_task_wake_after(1);
-	} while (linkStatus.linkState != Spw_Link_State_Run ||
-		 !rxStatus.isCurrentReceiveBufferActive);
+	} while (!rxStatus.isCurrentReceiveBufferActive);
 }
 
 static void process_rx_packets(samrh71_rtems_spw_private_data *const self)
@@ -232,7 +233,7 @@ static void check_spw_is_init_ok(samrh71_rtems_spw_private_data *const self)
 		Spw_Link_getStatus(&self->spw.link[self->link_id - 1U],
 				   &linkStatus);
 	} while (linkStatus.linkState < Spw_Link_State_Ready &&
-		 ticks < SPW_RESET_TIMEOUT_TICKS);
+		 ticks < SAMRH71_RTEMS_SPW_RESET_TIMEOUT_TICKS);
 
 	self->init_ok = (linkStatus.linkState >= Spw_Link_State_Ready);
 }
@@ -319,13 +320,13 @@ static void init_spw_driver(samrh71_rtems_spw_private_data *const self,
 static void init_rtems_synchronization_primitives(
 	samrh71_rtems_spw_private_data *const self)
 {
-	self->tx_done = false;
 	self->rx_deactivated = false;
+	self->on_tx_timeout = NULL;
 
 	rtems_status_code rc;
 
 	rc = rtems_semaphore_create(rtems_build_name('S', 'P', 'T', 'X'),
-				    0U, /* initially locked */
+				    1U, /* initially unlocked */
 				    RTEMS_SIMPLE_BINARY_SEMAPHORE, 0U,
 				    &self->tx_semaphore);
 	assert(rc == RTEMS_SUCCESSFUL);
@@ -439,7 +440,17 @@ void samrh71_rtems_spacewire_send(void *private_data, const uint8_t *data,
 	assert(data != NULL);
 	assert(length > 0U);
 
-	self->tx_done = false;
+	rtems_status_code rc = rtems_semaphore_obtain(
+		self->tx_semaphore, RTEMS_WAIT,
+		rtems_clock_get_ticks_per_second() *
+			SAMRH71_RTEMS_SPW_TX_TIMEOUT_SECONDS);
+
+	if (rc == RTEMS_TIMEOUT) {
+		if (self->on_tx_timeout != NULL) {
+			self->on_tx_timeout(self);
+		}
+		return;
+	}
 
 	const Spw_Tx_SendListEntryStruct entry = {
 		.isEntrySkipped = false,
@@ -468,10 +479,6 @@ void samrh71_rtems_spacewire_send(void *private_data, const uint8_t *data,
 		.startValue = 0U,
 	};
 	Spw_Tx_setNextSendList(&self->spw.tx, &txListCfg);
-
-	rtems_status_code rc = rtems_semaphore_obtain(
-		self->tx_semaphore, RTEMS_WAIT, RTEMS_NO_TIMEOUT);
-	(void)rc;
 }
 
 bool samrh71_rtems_spacewire_is_init_ok(const void *private_data)
@@ -479,4 +486,12 @@ bool samrh71_rtems_spacewire_is_init_ok(const void *private_data)
 	const samrh71_rtems_spw_private_data *self =
 		(const samrh71_rtems_spw_private_data *)private_data;
 	return self->init_ok;
+}
+
+void samrh71_rtems_spacewire_set_tx_timeout_callback(
+	void *private_data, void (*callback)(void *private_data))
+{
+	samrh71_rtems_spw_private_data *self =
+		(samrh71_rtems_spw_private_data *)private_data;
+	self->on_tx_timeout = callback;
 }
