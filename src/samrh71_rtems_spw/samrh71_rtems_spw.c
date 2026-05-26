@@ -20,7 +20,8 @@
 
 #define SPW_LINK_START_AND_LISTEN_COMMAND 3U
 
-#define SPW_RESET_TIMEOUT_TICKS 100U
+#define SAMRH71_RTEMS_SPW_RESET_TIMEOUT_TICKS 100U
+#define SAMRH71_RTEMS_SPW_TX_TIMEOUT_SECONDS 10U
 
 #define MEGA_HZ 1000000u
 
@@ -41,8 +42,11 @@ static void spw_tx_callback(void *arg, const Spw_Tx_IrqStatus *const irqStatus)
 		(samrh71_rtems_spw_private_data *)arg;
 
 	if (irqStatus->sendListDeactivatedIrqOccurred) {
+		// Spw_Tx_getStatus invokes TX_UnlockStatus that unlock the SPW TX module
+		// previous buffer status. Needed for next IRQ handling.
 		Spw_Tx_Status status;
 		Spw_Tx_getStatus(&self->spw.tx, &status);
+		(void)status;
 
 		rtems_status_code rc =
 			rtems_semaphore_release(self->tx_semaphore);
@@ -229,7 +233,7 @@ static void check_spw_is_init_ok(samrh71_rtems_spw_private_data *const self)
 		Spw_Link_getStatus(&self->spw.link[self->link_id - 1U],
 				   &linkStatus);
 	} while (linkStatus.linkState < Spw_Link_State_Ready &&
-		 ticks < SPW_RESET_TIMEOUT_TICKS);
+		 ticks < SAMRH71_RTEMS_SPW_RESET_TIMEOUT_TICKS);
 
 	self->init_ok = (linkStatus.linkState >= Spw_Link_State_Ready);
 }
@@ -436,9 +440,10 @@ void samrh71_rtems_spacewire_send(void *private_data, const uint8_t *data,
 	assert(data != NULL);
 	assert(length > 0U);
 
-	rtems_status_code rc =
-		rtems_semaphore_obtain(self->tx_semaphore, RTEMS_WAIT,
-				       SAMRH71_RTEMS_SPW_TX_TIMEOUT_TICKS);
+	rtems_status_code rc = rtems_semaphore_obtain(
+		self->tx_semaphore, RTEMS_WAIT,
+		rtems_clock_get_ticks_per_second() *
+			SAMRH71_RTEMS_SPW_TX_TIMEOUT_SECONDS);
 
 	if (rc == RTEMS_TIMEOUT) {
 		if (self->on_tx_timeout != NULL) {
