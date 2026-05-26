@@ -338,6 +338,12 @@ static void init_rtems_synchronization_primitives(
 	assert(rc == RTEMS_SUCCESSFUL);
 }
 
+static inline rtems_task
+samrh71_rtems_spacewire_poll_entry(rtems_task_argument arg)
+{
+	samrh71_rtems_spacewire_poll((void *)arg);
+}
+
 static void start_poll_task(samrh71_rtems_spw_private_data *const self)
 {
 	rtems_status_code rc;
@@ -356,8 +362,7 @@ static void start_poll_task(samrh71_rtems_spw_private_data *const self)
 	rc = rtems_task_construct(&taskConfig, &self->task);
 	assert(rc == RTEMS_SUCCESSFUL);
 
-	rc = rtems_task_start(self->task,
-			      (rtems_task_entry)samrh71_rtems_spacewire_poll,
+	rc = rtems_task_start(self->task, samrh71_rtems_spacewire_poll_entry,
 			      (rtems_task_argument)self);
 	assert(rc == RTEMS_SUCCESSFUL);
 }

@@ -21,7 +21,7 @@ target_sources(SamRH71RtemsSpw
 
 target_include_directories(SamRH71RtemsSpw
   PUBLIC    ${CMAKE_SOURCE_DIR}/src/RuntimeMocks
-            ${CMAKE_SOURCE_DIR}/TASTE-SAMV71-RTEMS-Runtime/src
+            ${CMAKE_SOURCE_DIR}/TASTE-SAMX-RTEMS-Runtime/src
             ${CMAKE_CURRENT_SOURCE_DIR}
             ${CMAKE_CURRENT_SOURCE_DIR}/n7s-spw/src
             ${CMAKE_CURRENT_SOURCE_DIR}/n7s-spw/stubs
