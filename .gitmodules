@@ -9,4 +9,4 @@
     url = ../cmake-tools.git
 [submodule "TASTE-SAMX-RTEMS-Runtime"]
 	path = TASTE-SAMX-RTEMS-Runtime
-	url = https://github.com/n7space/TASTE-SAMX-RTEMS-Runtime.git
+	url = ../TASTE-SAMX-RTEMS-Runtime.git
