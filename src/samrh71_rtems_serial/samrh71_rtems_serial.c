@@ -421,6 +421,8 @@ static void SamRH71RtemsSerialInit_uart_init_hardware(
 			       .isRxEnabled = true,
 			       .isTestModeEnabled = false,
 			       .parity = halUartConfig.parity,
+                   .stopBits = Uart_StopBits_OneBit,
+                   .charLength = Uart_CharacterLength_8Bits,
 			       .baudRate = halUartConfig.baudrate,
 			       .baudRateClkSrc = Uart_BaudRateClk_PeripheralCk,
 			       .baudRateClkFreq =
