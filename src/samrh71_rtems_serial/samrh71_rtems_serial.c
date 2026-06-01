@@ -425,8 +425,8 @@ static void SamRH71RtemsSerialInit_uart_init_hardware(
                    .charLength = Uart_CharacterLength_8Bits,
 			       .baudRate = halUartConfig.baudrate,
 			       .baudRateClkSrc = Uart_BaudRateClk_PeripheralCk,
-			       .baudRateClkFreq =
-				       SamRH71Core_GetMainClockFrequency() };
+			       .baudRateClkFreq = 50000000 };
+    //SamRH71Core_GetMainClockFrequency() };
 	Uart_setConfig(&halUart->uart, &config);
 }
 
@@ -444,7 +444,8 @@ static void SamRH71RtemsSerialInit_uart_write(
     Uart_ErrorHandler errorHandler = {
         .callback = Samrh71RtemsSerial_uart_error_handler, .arg = halUart
     };
-    ByteFifo_init(&halUart->txFifo, buffer, length);
+
+    ByteFifo_initFromBytes(&halUart->txFifo, buffer, length);
 
     Uart_registerErrorHandler(&halUart->uart, errorHandler);
     Uart_writeAsync(&halUart->uart, &halUart->txFifo, txHandler);
@@ -577,10 +578,11 @@ static ByteFifo *UartTxCallback(void *private_data)
 	samrh71_rtems_serial_private_data *self =
 		(samrh71_rtems_serial_private_data *)private_data;
 
-	/* rtems_status_code releaseResult = */
-	/* 	rtems_semaphore_release(self->m_tx_semaphore); */
-	/* assert(releaseResult == RTEMS_SUCCESSFUL); */
-	return &self->m_hal_uart.txFifo;
+	rtems_status_code releaseResult =
+		rtems_semaphore_release(self->m_tx_semaphore);
+	assert(releaseResult == RTEMS_SUCCESSFUL);
+	//return &self->m_hal_uart.txFifo;
+    return NULL;
 }
 
 static void
