@@ -68,58 +68,57 @@ static Uart *uart4handle;
 
 void UART0_Handler(void)
 {
-    ErrorCode errCode = 0;
+	ErrorCode errCode = 0;
 	if (uart0handle != NULL)
 		Uart_handleInterrupt(uart0handle, &errCode);
 }
 
 void UART1_Handler(void)
 {
-    ErrorCode errCode = 0;
+	ErrorCode errCode = 0;
 	if (uart1handle != NULL)
 		Uart_handleInterrupt(uart1handle, &errCode);
 }
 
 void UART2_Handler(void)
 {
-    ErrorCode errCode = 0;
+	ErrorCode errCode = 0;
 	if (uart2handle != NULL)
 		Uart_handleInterrupt(uart2handle, &errCode);
 }
 
 void UART3_Handler(void)
 {
-    ErrorCode errCode = 0;
+	ErrorCode errCode = 0;
 	if (uart3handle != NULL)
 		Uart_handleInterrupt(uart3handle, &errCode);
 }
 
 void UART4_Handler(void)
 {
-    ErrorCode errCode = 0;
+	ErrorCode errCode = 0;
 	if (uart4handle != NULL)
 		Uart_handleInterrupt(uart4handle, &errCode);
 }
 
 /// \brief Flexcom device identifiers.
 typedef enum {
-  Flexcom_Id_0 = 0, ///< Flexcom device 0.
-  Flexcom_Id_1 = 1, ///< Flexcom device 1.
-  Flexcom_Id_2 = 2, ///< Flexcom device 2.
-  Flexcom_Id_3 = 3, ///< Flexcom device 3.
+	Flexcom_Id_0 = 0, ///< Flexcom device 0.
+	Flexcom_Id_1 = 1, ///< Flexcom device 1.
+	Flexcom_Id_2 = 2, ///< Flexcom device 2.
+	Flexcom_Id_3 = 3, ///< Flexcom device 3.
 #if defined(N7S_TARGET_SAMRH71F20)
-  Flexcom_Id_4 = 4,      ///< Flexcom device 4.
-  Flexcom_Id_5 = 5,      ///< Flexcom device 5.
-  Flexcom_Id_6 = 6,      ///< Flexcom device 6.
-  Flexcom_Id_7 = 7,      ///< Flexcom device 7.
-  Flexcom_Id_8 = 8,      ///< Flexcom device 8.
-  Flexcom_Id_9 = 9,      ///< Flexcom device 9.
-  Flexcom_Id_Count = 10, ///< Number of available instances of Flexcom.
+	Flexcom_Id_4 = 4, ///< Flexcom device 4.
+	Flexcom_Id_5 = 5, ///< Flexcom device 5.
+	Flexcom_Id_6 = 6, ///< Flexcom device 6.
+	Flexcom_Id_7 = 7, ///< Flexcom device 7.
+	Flexcom_Id_8 = 8, ///< Flexcom device 8.
+	Flexcom_Id_9 = 9, ///< Flexcom device 9.
+	Flexcom_Id_Count = 10, ///< Number of available instances of Flexcom.
 #else
-  Flexcom_Id_Count = 4, ///< Number of available instances of Flexcom.
+	Flexcom_Id_Count = 4, ///< Number of available instances of Flexcom.
 #endif
 } Flexcom_Id;
-
 
 static void SamRH71RtemsSerial_Init_global()
 {
@@ -144,7 +143,6 @@ static void SamRH71RtemsSerial_Init_global()
 	}
 }
 
-
 static inline void
 Samrh71RtemsSerial_uart_error_handler(Uart_ErrorFlags errorFlags, void *arg)
 {
@@ -165,8 +163,8 @@ typedef struct {
 
 static inline Samrh71RtemsSerial_UartPinConfig
 Samrh71RtemsSerial_make_uart_pin_config(Pio_Port port,
-				       Pmc_PeripheralId peripheralId,
-				       uint32_t pinMask, Pio_Control control)
+					Pmc_PeripheralId peripheralId,
+					uint32_t pinMask, Pio_Control control)
 {
 	Samrh71RtemsSerial_UartPinConfig pinConfig = {
 		.port = port,
@@ -198,9 +196,10 @@ Samrh71RtemsSerial_get_uart_id(const Serial_SamRH71_Rtems_Device_T device)
 	}
 }
 
-static inline Flexcom_Id Samrh71RtemsSerial_get_flexcom_id(const Serial_SamRH71_Rtems_Device_T device)
+static inline Flexcom_Id
+Samrh71RtemsSerial_get_flexcom_id(const Serial_SamRH71_Rtems_Device_T device)
 {
-    	switch (device) {
+	switch (device) {
 	case Serial_SamRH71_Rtems_Device_T_uart0:
 		return Flexcom_Id_0;
 	case Serial_SamRH71_Rtems_Device_T_uart1:
@@ -217,8 +216,8 @@ static inline Flexcom_Id Samrh71RtemsSerial_get_flexcom_id(const Serial_SamRH71_
 	}
 }
 
-
-static Samrh71RtemsSerial_UartPinConfig Samrh71RtemsSerial_get_uart_tx_pin_config(
+static Samrh71RtemsSerial_UartPinConfig
+Samrh71RtemsSerial_get_uart_tx_pin_config(
 	const Serial_SamRH71_Rtems_Device_T device)
 {
 	switch (device) {
@@ -227,35 +226,36 @@ static Samrh71RtemsSerial_UartPinConfig Samrh71RtemsSerial_get_uart_tx_pin_confi
 			Pio_Port_C, Pmc_PeripheralId_Flexcom0, PIO_PIN_21,
 			Pio_Control_PeripheralA);
 
-    case Serial_SamRH71_Rtems_Device_T_uart1:
-            return Samrh71RtemsSerial_make_uart_pin_config(
+	case Serial_SamRH71_Rtems_Device_T_uart1:
+		return Samrh71RtemsSerial_make_uart_pin_config(
 			Pio_Port_F, Pmc_PeripheralId_Flexcom1, PIO_PIN_30,
 			Pio_Control_PeripheralA);
 
-    case Serial_SamRH71_Rtems_Device_T_uart2:
-                return Samrh71RtemsSerial_make_uart_pin_config(
+	case Serial_SamRH71_Rtems_Device_T_uart2:
+		return Samrh71RtemsSerial_make_uart_pin_config(
 			Pio_Port_A, Pmc_PeripheralId_Flexcom2, PIO_PIN_2,
 			Pio_Control_PeripheralA);
 
-    case Serial_SamRH71_Rtems_Device_T_uart3:
-                    return Samrh71RtemsSerial_make_uart_pin_config(
+	case Serial_SamRH71_Rtems_Device_T_uart3:
+		return Samrh71RtemsSerial_make_uart_pin_config(
 			Pio_Port_A, Pmc_PeripheralId_Flexcom3, PIO_PIN_20,
 			Pio_Control_PeripheralA);
 
-    case Serial_SamRH71_Rtems_Device_T_uart4:
-                    return Samrh71RtemsSerial_make_uart_pin_config(
+	case Serial_SamRH71_Rtems_Device_T_uart4:
+		return Samrh71RtemsSerial_make_uart_pin_config(
 			Pio_Port_C, Pmc_PeripheralId_Flexcom4, PIO_PIN_0,
 			Pio_Control_PeripheralA);
 
-    default:
-        assert(false && "Unsupported UART");
+	default:
+		assert(false && "Unsupported UART");
 		return Samrh71RtemsSerial_make_uart_pin_config(
 			Pio_Port_C, Pmc_PeripheralId_Flexcom0, PIO_PIN_21,
 			Pio_Control_PeripheralA);
 	}
 }
 
-static Samrh71RtemsSerial_UartPinConfig Samrh71RtemsSerial_get_uart_rx_pin_config(
+static Samrh71RtemsSerial_UartPinConfig
+Samrh71RtemsSerial_get_uart_rx_pin_config(
 	const Serial_SamRH71_Rtems_Device_T device)
 {
 	switch (device) {
@@ -330,8 +330,8 @@ static inline Pmc_PeripheralId Samrh71RtemsSerial_get_periph_uart_id(Uart_Id id)
 	}
 }
 
-static inline void Samrh71RtemsSerial_uart_init_pio(
-	const Serial_SamRH71_Rtems_Device_T device)
+static inline void
+Samrh71RtemsSerial_uart_init_pio(const Serial_SamRH71_Rtems_Device_T device)
 {
 	const Samrh71RtemsSerial_UartPinConfig txPinConfig =
 		Samrh71RtemsSerial_get_uart_tx_pin_config(device);
@@ -342,8 +342,8 @@ static inline void Samrh71RtemsSerial_uart_init_pio(
 	Samrh71RtemsSerial_uart_init_pin(&rxPinConfig, Pio_Direction_Input);
 }
 
-inline static void Samrh71RtemsSerial_uart_init_pmc(
-	const Serial_SamRH71_Rtems_Device_T device)
+inline static void
+Samrh71RtemsSerial_uart_init_pmc(const Serial_SamRH71_Rtems_Device_T device)
 {
 	const Samrh71RtemsSerial_UartPinConfig txPinConfig =
 		Samrh71RtemsSerial_get_uart_tx_pin_config(device);
@@ -362,13 +362,15 @@ inline static void Samrh71RtemsSerial_uart_init_pmc(
 #define FLEXCOM_ADDRESS_OFFSET 0x00004000U
 #define FLEXCOM_MODE_MASK 0x00000003U
 
-inline static void Samrh71RtemsSerial_uart_init_flexcom(const Serial_SamRH71_Rtems_Device_T device)
+inline static void
+Samrh71RtemsSerial_uart_init_flexcom(const Serial_SamRH71_Rtems_Device_T device)
 {
-    Flexcom_Id id = Samrh71RtemsSerial_get_flexcom_id(device);
-    uint32_t* flexcomRegister = (uint32_t*)(FLEXCOM_ADDRESS_BASE + (FLEXCOM_ADDRESS_OFFSET * id));
-    //uint32_t currentMode = (*flexcomRegister) & FLEXCOM_MODE_MASK;
+	Flexcom_Id id = Samrh71RtemsSerial_get_flexcom_id(device);
+	uint32_t *flexcomRegister = (uint32_t *)(FLEXCOM_ADDRESS_BASE +
+						 (FLEXCOM_ADDRESS_OFFSET * id));
+	//uint32_t currentMode = (*flexcomRegister) & FLEXCOM_MODE_MASK;
 
-    *flexcomRegister = 0x1U;
+	*flexcomRegister = 0x1U;
 }
 
 inline static void Samrh71RtemsSerial_uart_init_handle(Uart *uart, Uart_Id id)
@@ -410,7 +412,7 @@ static void SamRH71RtemsSerialInit_uart_init_hardware(
 
 	// init uart
 	Samrh71RtemsSerial_uart_init_pmc(device);
-    Samrh71RtemsSerial_uart_init_flexcom(device);
+	Samrh71RtemsSerial_uart_init_flexcom(device);
 	Samrh71RtemsSerial_uart_init_pio(device);
 	Samrh71RtemsSerial_uart_init_handle(&halUart->uart, halUartConfig.id);
 
@@ -421,12 +423,12 @@ static void SamRH71RtemsSerialInit_uart_init_hardware(
 			       .isRxEnabled = true,
 			       .isTestModeEnabled = false,
 			       .parity = halUartConfig.parity,
-                   .stopBits = Uart_StopBits_OneBit,
-                   .charLength = Uart_CharacterLength_8Bits,
+			       .stopBits = Uart_StopBits_OneBit,
+			       .charLength = Uart_CharacterLength_8Bits,
 			       .baudRate = halUartConfig.baudrate,
 			       .baudRateClkSrc = Uart_BaudRateClk_PeripheralCk,
-			       .baudRateClkFreq = 50000000 };
-    //SamRH71Core_GetMainClockFrequency() };
+			       .baudRateClkFreq =
+				       SamRH71Core_GetMainClockFrequency() };
 	Uart_setConfig(&halUart->uart, &config);
 }
 
@@ -441,14 +443,15 @@ static void SamRH71RtemsSerialInit_uart_write(
 	Samrh71RtemsSerial_Uart *const halUart, const uint8_t *const buffer,
 	const uint16_t length, const Uart_TxHandler txHandler)
 {
-    Uart_ErrorHandler errorHandler = {
-        .callback = Samrh71RtemsSerial_uart_error_handler, .arg = halUart
-    };
+	Uart_ErrorHandler errorHandler = {
+		.callback = Samrh71RtemsSerial_uart_error_handler,
+		.arg = halUart
+	};
 
-    ByteFifo_initFromBytes(&halUart->txFifo, buffer, length);
+	ByteFifo_initFromBytes(&halUart->txFifo, buffer, length);
 
-    Uart_registerErrorHandler(&halUart->uart, errorHandler);
-    Uart_writeAsync(&halUart->uart, &halUart->txFifo, txHandler);
+	Uart_registerErrorHandler(&halUart->uart, errorHandler);
+	Uart_writeAsync(&halUart->uart, &halUart->txFifo, txHandler);
 }
 
 /** \brief Asynchronously receives bytes over uart.
@@ -459,12 +462,13 @@ static void SamRH71RtemsSerialInit_uart_write(
  * \param [in] rxHandler  handler called after successful array reception or after matching character was found
  */
 static void SamRH71RtemsSerial_uart_read(Samrh71RtemsSerial_Uart *const halUart,
-					uint8_t *const buffer,
-					const uint16_t length,
-					const Uart_RxHandler rxHandler)
+					 uint8_t *const buffer,
+					 const uint16_t length,
+					 const Uart_RxHandler rxHandler)
 {
 	Uart_ErrorHandler errorHandler = {
-		.callback = Samrh71RtemsSerial_uart_error_handler, .arg = halUart
+		.callback = Samrh71RtemsSerial_uart_error_handler,
+		.arg = halUart
 	};
 	ByteFifo_init(&halUart->rxFifo, buffer, length);
 
@@ -474,14 +478,14 @@ static void SamRH71RtemsSerial_uart_read(Samrh71RtemsSerial_Uart *const halUart,
 
 static inline void
 SamRH71RtemsSerialInit_uart_register(samrh71_rtems_serial_private_data *self,
-				    Serial_SamRH71_Rtems_Device_T deviceName)
+				     Serial_SamRH71_Rtems_Device_T deviceName)
 {
 	self->m_hal_uart_config.id = Samrh71RtemsSerial_get_uart_id(deviceName);
 }
 
 static inline void
 SamRH71RtemsSerialInit_uart_parity(samrh71_rtems_serial_private_data *self,
-				  Serial_SamRH71_Rtems_Parity_T parity)
+				   Serial_SamRH71_Rtems_Parity_T parity)
 {
 	switch (parity) {
 	case Serial_SamRH71_Rtems_Parity_T_odd:
@@ -500,7 +504,7 @@ SamRH71RtemsSerialInit_uart_parity(samrh71_rtems_serial_private_data *self,
 
 static inline void
 SamRH71RtemsSerialInit_uart_baudrate(samrh71_rtems_serial_private_data *self,
-				    Serial_SamRH71_Rtems_Baudrate_T speed)
+				     Serial_SamRH71_Rtems_Baudrate_T speed)
 {
 	switch (speed) {
 	case Serial_SamRH71_Rtems_Baudrate_T_b9600:
@@ -575,14 +579,14 @@ SamRH71RtemsSerialInit_rx_handler(samrh71_rtems_serial_private_data *const self)
 
 static ByteFifo *UartTxCallback(void *private_data)
 {
+	// called when tx fifo is empty
 	samrh71_rtems_serial_private_data *self =
 		(samrh71_rtems_serial_private_data *)private_data;
 
 	rtems_status_code releaseResult =
 		rtems_semaphore_release(self->m_tx_semaphore);
 	assert(releaseResult == RTEMS_SUCCESSFUL);
-	//return &self->m_hal_uart.txFifo;
-    return NULL;
+	return NULL;
 }
 
 static void
@@ -676,9 +680,9 @@ void Samrh71RtemsSerialPoll(rtems_task_argument private_data)
 		self->m_rx_semaphore, RTEMS_WAIT, RTEMS_NO_TIMEOUT);
 	assert(obtainResult == RTEMS_SUCCESSFUL);
 	SamRH71RtemsSerial_uart_read(&self->m_hal_uart,
-				    self->m_fifo_memory_block,
-				    Serial_SAMRH71_RTEMS_RECV_BUFFER_SIZE,
-				    self->m_uart_rx_handler);
+				     self->m_fifo_memory_block,
+				     Serial_SAMRH71_RTEMS_RECV_BUFFER_SIZE,
+				     self->m_uart_rx_handler);
 	while (true) {
 		/// Wait for data to arrive. Semaphore will be given
 		obtainResult = rtems_semaphore_obtain(
@@ -710,7 +714,7 @@ void Samrh71RtemsSerialPoll(rtems_task_argument private_data)
 }
 
 void Samrh71RtemsSerialSend(void *private_data, const uint8_t *const data,
-			   const size_t length)
+			    const size_t length)
 {
 	samrh71_rtems_serial_private_data *self =
 		(samrh71_rtems_serial_private_data *)private_data;
@@ -742,8 +746,8 @@ void Samrh71RtemsSerialSend(void *private_data, const uint8_t *const data,
 			self->m_tx_semaphore, RTEMS_WAIT, RTEMS_NO_TIMEOUT);
 		assert(obtainResult == RTEMS_SUCCESSFUL);
 		SamRH71RtemsSerialInit_uart_write(&self->m_hal_uart, data,
-						 length,
-						 self->m_uart_tx_handler);
+						  length,
+						  self->m_uart_tx_handler);
 	}
 }
 
