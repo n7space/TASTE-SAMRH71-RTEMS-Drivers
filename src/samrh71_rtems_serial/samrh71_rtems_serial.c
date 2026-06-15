@@ -49,32 +49,8 @@ static Uart *uart7handle;
 static Uart *uart8handle;
 static Uart *uart9handle;
 
-/**
- * @brief UART priotity definition
- * System interrupts priorities levels must be smaller than
- * kernel interrupts levels. The lower the priority value the
- * higher the priority is. Thus, the UART interrupt priority value
- * must be equal or greater then configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY.
- */
-#define UART_INTERRUPT_PRIORITY RTEMS_MAXIMUM_PRIORITY
-
-#define UART_ID_UART0 "UART0: "
-#define UART_ID_UART1 "UART1: "
-#define UART_ID_UART2 "UART2: "
-#define UART_ID_UART3 "UART3: "
-#define UART_ID_UART4 "UART4: "
-#define UART_ID_UART5 "UART4: "
-#define UART_ID_UART6 "UART4: "
-#define UART_ID_UART7 "UART4: "
-#define UART_ID_UART8 "UART4: "
-#define UART_ID_UART9 "UART4: "
-
-#define UART_READ_ERROR_OVERRUN_ERROR "Hal:Hal_uartRead: Overrun error.\n\r"
-#define UART_READ_ERROR_FRAME_ERROR "Hal:Hal_uartRead: Frame error.\n\r"
-#define UART_READ_ERROR_PARITY_ERROR "Hal:Hal_uartRead: Parity error.\n\r"
-
-#define UART_RX_INTERRUPT_ERROR_FIFO_FULL \
-	"Hal:Hal_interruptHandler: FIFO is full.\n\r"
+// To make sure UART is handled with highest priority, set the IRQ priority to 0
+#define UART_INTERRUPT_PRIORITY 0
 
 void UART0_Handler(void)
 {
