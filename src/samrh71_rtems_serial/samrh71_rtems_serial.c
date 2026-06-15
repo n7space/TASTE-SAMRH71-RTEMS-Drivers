@@ -1,7 +1,7 @@
 /**@file
  * This file is part of the TASTE SAMRH71 RTEMS Drivers.
  *
- * @copyright 2025 N7 Space Sp. z o.o.
+ * @copyright 2026 N7 Space Sp. z o.o.
  *
  * Licensed under the ESA Public License (ESA-PL) Permissive (Type 3),
  * Version 2.4 (the "License");
@@ -43,6 +43,11 @@ static Uart *uart1handle;
 static Uart *uart2handle;
 static Uart *uart3handle;
 static Uart *uart4handle;
+static Uart *uart5handle;
+static Uart *uart6handle;
+static Uart *uart7handle;
+static Uart *uart8handle;
+static Uart *uart9handle;
 
 /**
  * @brief UART priotity definition
@@ -58,6 +63,11 @@ static Uart *uart4handle;
 #define UART_ID_UART2 "UART2: "
 #define UART_ID_UART3 "UART3: "
 #define UART_ID_UART4 "UART4: "
+#define UART_ID_UART5 "UART4: "
+#define UART_ID_UART6 "UART4: "
+#define UART_ID_UART7 "UART4: "
+#define UART_ID_UART8 "UART4: "
+#define UART_ID_UART9 "UART4: "
 
 #define UART_READ_ERROR_OVERRUN_ERROR "Hal:Hal_uartRead: Overrun error.\n\r"
 #define UART_READ_ERROR_FRAME_ERROR "Hal:Hal_uartRead: Frame error.\n\r"
@@ -101,13 +111,48 @@ void UART4_Handler(void)
 		Uart_handleInterrupt(uart4handle, &errCode);
 }
 
+void UART5_Handler(void)
+{
+	ErrorCode errCode = 0;
+	if (uart5handle != NULL)
+		Uart_handleInterrupt(uart5handle, &errCode);
+}
+
+void UART6_Handler(void)
+{
+	ErrorCode errCode = 0;
+	if (uart6handle != NULL)
+		Uart_handleInterrupt(uart6handle, &errCode);
+}
+
+void UART7_Handler(void)
+{
+	ErrorCode errCode = 0;
+	if (uart7handle != NULL)
+		Uart_handleInterrupt(uart7handle, &errCode);
+}
+
+void UART8_Handler(void)
+{
+	ErrorCode errCode = 0;
+	if (uart8handle != NULL)
+		Uart_handleInterrupt(uart8handle, &errCode);
+}
+
+void UART9_Handler(void)
+{
+	ErrorCode errCode = 0;
+	if (uart9handle != NULL)
+		Uart_handleInterrupt(uart9handle, &errCode);
+}
+
 /// \brief Flexcom device identifiers.
 typedef enum {
 	Flexcom_Id_0 = 0, ///< Flexcom device 0.
 	Flexcom_Id_1 = 1, ///< Flexcom device 1.
 	Flexcom_Id_2 = 2, ///< Flexcom device 2.
 	Flexcom_Id_3 = 3, ///< Flexcom device 3.
-#if defined(N7S_TARGET_SAMRH71F20)
+
 	Flexcom_Id_4 = 4, ///< Flexcom device 4.
 	Flexcom_Id_5 = 5, ///< Flexcom device 5.
 	Flexcom_Id_6 = 6, ///< Flexcom device 6.
@@ -115,9 +160,6 @@ typedef enum {
 	Flexcom_Id_8 = 8, ///< Flexcom device 8.
 	Flexcom_Id_9 = 9, ///< Flexcom device 9.
 	Flexcom_Id_Count = 10, ///< Number of available instances of Flexcom.
-#else
-	Flexcom_Id_Count = 4, ///< Number of available instances of Flexcom.
-#endif
 } Flexcom_Id;
 
 static void SamRH71RtemsSerial_Init_global()
@@ -140,6 +182,21 @@ static void SamRH71RtemsSerial_Init_global()
 		SamRH71Core_InterruptSubscribe(
 			Nvic_Irq_Flexcom4, "uart4",
 			(rtems_interrupt_handler)&UART4_Handler, NULL);
+		SamRH71Core_InterruptSubscribe(
+			Nvic_Irq_Flexcom5, "uart5",
+			(rtems_interrupt_handler)&UART5_Handler, NULL);
+		SamRH71Core_InterruptSubscribe(
+			Nvic_Irq_Flexcom6, "uart6",
+			(rtems_interrupt_handler)&UART6_Handler, NULL);
+		SamRH71Core_InterruptSubscribe(
+			Nvic_Irq_Flexcom7, "uart7",
+			(rtems_interrupt_handler)&UART7_Handler, NULL);
+		SamRH71Core_InterruptSubscribe(
+			Nvic_Irq_Flexcom8, "uart8",
+			(rtems_interrupt_handler)&UART8_Handler, NULL);
+		SamRH71Core_InterruptSubscribe(
+			Nvic_Irq_Flexcom9, "uart9",
+			(rtems_interrupt_handler)&UART9_Handler, NULL);
 	}
 }
 
@@ -190,6 +247,16 @@ Samrh71RtemsSerial_get_uart_id(const Serial_SamRH71_Rtems_Device_T device)
 		return Uart_Id_3;
 	case Serial_SamRH71_Rtems_Device_T_uart4:
 		return Uart_Id_4;
+	case Serial_SamRH71_Rtems_Device_T_uart5:
+		return Uart_Id_5;
+	case Serial_SamRH71_Rtems_Device_T_uart6:
+		return Uart_Id_6;
+	case Serial_SamRH71_Rtems_Device_T_uart7:
+		return Uart_Id_7;
+	case Serial_SamRH71_Rtems_Device_T_uart8:
+		return Uart_Id_8;
+	case Serial_SamRH71_Rtems_Device_T_uart9:
+		return Uart_Id_9;
 	default:
 		assert(false && "Unsupported UART");
 		return Uart_Id_0;
@@ -210,6 +277,16 @@ Samrh71RtemsSerial_get_flexcom_id(const Serial_SamRH71_Rtems_Device_T device)
 		return Flexcom_Id_3;
 	case Serial_SamRH71_Rtems_Device_T_uart4:
 		return Flexcom_Id_4;
+	case Serial_SamRH71_Rtems_Device_T_uart5:
+		return Flexcom_Id_5;
+	case Serial_SamRH71_Rtems_Device_T_uart6:
+		return Flexcom_Id_6;
+	case Serial_SamRH71_Rtems_Device_T_uart7:
+		return Flexcom_Id_7;
+	case Serial_SamRH71_Rtems_Device_T_uart8:
+		return Flexcom_Id_8;
+	case Serial_SamRH71_Rtems_Device_T_uart9:
+		return Flexcom_Id_9;
 	default:
 		assert(false && "Unsupported UART");
 		return Flexcom_Id_0;
@@ -246,6 +323,31 @@ Samrh71RtemsSerial_get_uart_tx_pin_config(
 			Pio_Port_C, Pmc_PeripheralId_Flexcom4, PIO_PIN_0,
 			Pio_Control_PeripheralA);
 
+	case Serial_SamRH71_Rtems_Device_T_uart5:
+		return Samrh71RtemsSerial_make_uart_pin_config(
+			Pio_Port_C, Pmc_PeripheralId_Flexcom4, PIO_PIN_9,
+			Pio_Control_PeripheralA);
+
+	case Serial_SamRH71_Rtems_Device_T_uart6:
+		return Samrh71RtemsSerial_make_uart_pin_config(
+			Pio_Port_B, Pmc_PeripheralId_Flexcom4, PIO_PIN_6,
+			Pio_Control_PeripheralA);
+
+	case Serial_SamRH71_Rtems_Device_T_uart7:
+		return Samrh71RtemsSerial_make_uart_pin_config(
+			Pio_Port_B, Pmc_PeripheralId_Flexcom4, PIO_PIN_4,
+			Pio_Control_PeripheralA);
+
+	case Serial_SamRH71_Rtems_Device_T_uart8:
+		return Samrh71RtemsSerial_make_uart_pin_config(
+			Pio_Port_A, Pmc_PeripheralId_Flexcom4, PIO_PIN_27,
+			Pio_Control_PeripheralA);
+
+	case Serial_SamRH71_Rtems_Device_T_uart9:
+		return Samrh71RtemsSerial_make_uart_pin_config(
+			Pio_Port_A, Pmc_PeripheralId_Flexcom4, PIO_PIN_25,
+			Pio_Control_PeripheralA);
+
 	default:
 		assert(false && "Unsupported UART");
 		return Samrh71RtemsSerial_make_uart_pin_config(
@@ -263,22 +365,52 @@ Samrh71RtemsSerial_get_uart_rx_pin_config(
 		return Samrh71RtemsSerial_make_uart_pin_config(
 			Pio_Port_C, Pmc_PeripheralId_Flexcom0, PIO_PIN_22,
 			Pio_Control_PeripheralA);
+
 	case Serial_SamRH71_Rtems_Device_T_uart1:
 		return Samrh71RtemsSerial_make_uart_pin_config(
 			Pio_Port_F, Pmc_PeripheralId_Flexcom1, PIO_PIN_29,
-			Pio_Control_PeripheralC);
+			Pio_Control_PeripheralA);
+
 	case Serial_SamRH71_Rtems_Device_T_uart2:
 		return Samrh71RtemsSerial_make_uart_pin_config(
 			Pio_Port_A, Pmc_PeripheralId_Flexcom2, PIO_PIN_6,
-			Pio_Control_PeripheralC);
+			Pio_Control_PeripheralA);
+
 	case Serial_SamRH71_Rtems_Device_T_uart3:
 		return Samrh71RtemsSerial_make_uart_pin_config(
 			Pio_Port_A, Pmc_PeripheralId_Flexcom3, PIO_PIN_19,
 			Pio_Control_PeripheralA);
+
 	case Serial_SamRH71_Rtems_Device_T_uart4:
 		return Samrh71RtemsSerial_make_uart_pin_config(
 			Pio_Port_C, Pmc_PeripheralId_Flexcom4, PIO_PIN_1,
-			Pio_Control_PeripheralC);
+			Pio_Control_PeripheralA);
+
+	case Serial_SamRH71_Rtems_Device_T_uart5:
+		return Samrh71RtemsSerial_make_uart_pin_config(
+			Pio_Port_C, Pmc_PeripheralId_Flexcom4, PIO_PIN_0,
+			Pio_Control_PeripheralA);
+
+	case Serial_SamRH71_Rtems_Device_T_uart6:
+		return Samrh71RtemsSerial_make_uart_pin_config(
+			Pio_Port_B, Pmc_PeripheralId_Flexcom4, PIO_PIN_7,
+			Pio_Control_PeripheralA);
+
+	case Serial_SamRH71_Rtems_Device_T_uart7:
+		return Samrh71RtemsSerial_make_uart_pin_config(
+			Pio_Port_B, Pmc_PeripheralId_Flexcom4, PIO_PIN_5,
+			Pio_Control_PeripheralA);
+
+	case Serial_SamRH71_Rtems_Device_T_uart8:
+		return Samrh71RtemsSerial_make_uart_pin_config(
+			Pio_Port_A, Pmc_PeripheralId_Flexcom4, PIO_PIN_28,
+			Pio_Control_PeripheralA);
+
+	case Serial_SamRH71_Rtems_Device_T_uart9:
+		return Samrh71RtemsSerial_make_uart_pin_config(
+			Pio_Port_A, Pmc_PeripheralId_Flexcom4, PIO_PIN_26,
+			Pio_Control_PeripheralA);
+
 	default:
 		assert(false && "Unsupported UART");
 		return Samrh71RtemsSerial_make_uart_pin_config(
@@ -324,6 +456,16 @@ static inline Pmc_PeripheralId Samrh71RtemsSerial_get_periph_uart_id(Uart_Id id)
 		return Pmc_PeripheralId_Flexcom3;
 	case Uart_Id_4:
 		return Pmc_PeripheralId_Flexcom4;
+	case Uart_Id_5:
+		return Pmc_PeripheralId_Flexcom5;
+	case Uart_Id_6:
+		return Pmc_PeripheralId_Flexcom6;
+	case Uart_Id_7:
+		return Pmc_PeripheralId_Flexcom7;
+	case Uart_Id_8:
+		return Pmc_PeripheralId_Flexcom8;
+	case Uart_Id_9:
+		return Pmc_PeripheralId_Flexcom9;
 	default:
 		assert(false);
 		return Pmc_PeripheralId_Flexcom0;
@@ -361,6 +503,8 @@ Samrh71RtemsSerial_uart_init_pmc(const Serial_SamRH71_Rtems_Device_T device)
 #define FLEXCOM_ADDRESS_BASE 0x40010000U
 #define FLEXCOM_ADDRESS_OFFSET 0x00004000U
 #define FLEXCOM_MODE_MASK 0x00000003U
+#define FLEXCOM_MODE_NO_COMMUNICATION 0x00U
+#define FLEXCOM_MODE_USART 0x01U
 
 inline static void
 Samrh71RtemsSerial_uart_init_flexcom(const Serial_SamRH71_Rtems_Device_T device)
@@ -368,9 +512,11 @@ Samrh71RtemsSerial_uart_init_flexcom(const Serial_SamRH71_Rtems_Device_T device)
 	Flexcom_Id id = Samrh71RtemsSerial_get_flexcom_id(device);
 	uint32_t *flexcomRegister = (uint32_t *)(FLEXCOM_ADDRESS_BASE +
 						 (FLEXCOM_ADDRESS_OFFSET * id));
-	//uint32_t currentMode = (*flexcomRegister) & FLEXCOM_MODE_MASK;
+	uint32_t currentMode = (*flexcomRegister) & FLEXCOM_MODE_MASK;
 
-	*flexcomRegister = 0x1U;
+	assert(currentMode != FLEXCOM_MODE_NO_COMMUNICATION);
+
+	*flexcomRegister = FLEXCOM_MODE_USART;
 }
 
 inline static void Samrh71RtemsSerial_uart_init_handle(Uart *uart, Uart_Id id)
@@ -391,6 +537,21 @@ inline static void Samrh71RtemsSerial_uart_init_handle(Uart *uart, Uart_Id id)
 	case Uart_Id_4:
 		uart4handle = uart;
 		break;
+	case Uart_Id_5:
+		uart5handle = uart;
+		break;
+	case Uart_Id_6:
+		uart6handle = uart;
+		break;
+	case Uart_Id_7:
+		uart7handle = uart;
+		break;
+	case Uart_Id_8:
+		uart8handle = uart;
+		break;
+	case Uart_Id_9:
+		uart9handle = uart;
+		break;
 	}
 }
 
@@ -406,7 +567,7 @@ static void SamRH71RtemsSerialInit_uart_init_hardware(
 {
 	SamRH71RtemsSerial_Init_global();
 
-	assert(halUartConfig.id <= Uart_Id_4);
+	assert(halUartConfig.id <= Uart_Id_9);
 	assert((halUartConfig.parity <= Uart_Parity_Odd) ||
 	       (halUartConfig.parity == Uart_Parity_None));
 

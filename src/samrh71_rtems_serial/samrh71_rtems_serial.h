@@ -1,7 +1,7 @@
 /**@file
  * This file is part of the TASTE SAMRH71 RTEMS Drivers.
  *
- * @copyright 2025 N7 Space Sp. z o.o.
+ * @copyright 2026 N7 Space Sp. z o.o.
  *
  * Licensed under the ESA Public License (ESA-PL) Permissive (Type 3),
  * Version 2.4 (the "License");
@@ -91,7 +91,7 @@ typedef struct {
  * @brief Function pointer definition for registering uart error callback.
  */
 typedef void (*Samrh71RtemsSerial_UserUartErrorCallback)(Uart_ErrorFlags,
-							void *);
+							 void *);
 
 /**
  * @brief Initialize samrh71_rtems_serial driver.
@@ -100,7 +100,7 @@ typedef void (*Samrh71RtemsSerial_UserUartErrorCallback)(Uart_ErrorFlags,
  *
  * @param private_data                  Driver private data, allocated by
  * runtime
- * @param bus_id                        Identifier of the bus, which is driver
+ * @param bus_id                        Identifier of the TASTE bus
  * @param device_id                     Identifier of the device
  * @param device_configuration          Configuration of device
  * @param remote_device_configuration   Configuration of remote device
@@ -132,7 +132,7 @@ void Samrh71RtemsSerialPoll(rtems_task_argument private_data);
  * @param length         The size of the buffer
  */
 void Samrh71RtemsSerialSend(void *private_data, const uint8_t *const data,
-			   const size_t length);
+			    const size_t length);
 
 /**
  * @brief Register callback for uart errors.

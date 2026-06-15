@@ -5,7 +5,12 @@ Serial-SamRH71-Rtems-Device-T    ::= ENUMERATED {
    uart1,
    uart2,
    uart3,
-   uart4
+   uart4,
+   uart5,
+   uart6,
+   uart7,
+   uart8,
+   uart9
 }
 
 Serial-SamRH71-Rtems-Baudrate-T  ::= ENUMERATED {b9600, b19200, b38400, b57600, b115200, b230400}
