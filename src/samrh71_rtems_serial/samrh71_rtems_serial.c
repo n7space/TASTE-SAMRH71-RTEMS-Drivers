@@ -829,6 +829,8 @@ void Samrh71RtemsSerialPoll(rtems_task_argument private_data)
 		length = ByteFifo_getCount(&self->m_hal_uart.rxFifo);
 
 		for (size_t i = 0; i < length; i++) {
+			// TODO Create a new ByteFifo with self->m_recv_buffer
+			// Use Uart_readRxFifo, which handles critical section internally
 			SamRH71RtemsSerialInterrupt_rx_disable(self);
 			ByteFifo_pull(&self->m_hal_uart.rxFifo,
 				      &self->m_recv_buffer[i]);
