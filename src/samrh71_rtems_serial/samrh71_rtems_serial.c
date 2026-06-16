@@ -478,8 +478,6 @@ Samrh71RtemsSerial_uart_init_pmc(const Serial_SamRH71_Rtems_Device_T device)
 
 #define FLEXCOM_ADDRESS_BASE 0x40010000U
 #define FLEXCOM_ADDRESS_OFFSET 0x00004000U
-#define FLEXCOM_MODE_MASK 0x00000003U
-#define FLEXCOM_MODE_NO_COMMUNICATION 0x00U
 #define FLEXCOM_MODE_USART 0x01U
 
 inline static void
@@ -488,9 +486,6 @@ Samrh71RtemsSerial_uart_init_flexcom(const Serial_SamRH71_Rtems_Device_T device)
 	Flexcom_Id id = Samrh71RtemsSerial_get_flexcom_id(device);
 	uint32_t *flexcomRegister = (uint32_t *)(FLEXCOM_ADDRESS_BASE +
 						 (FLEXCOM_ADDRESS_OFFSET * id));
-	uint32_t currentMode = (*flexcomRegister) & FLEXCOM_MODE_MASK;
-
-	assert(currentMode != FLEXCOM_MODE_NO_COMMUNICATION);
 
 	*flexcomRegister = FLEXCOM_MODE_USART;
 }
