@@ -18,4 +18,6 @@ rm -rdf "${PREFIX}/include/TASTE-SAMRH71-RTEMS-Drivers/samrh71_rtems_spw/microch
 find "$TARGET_DIR" -type f -exec sed -i 's|#include "microchip_spw/spw.h"|#include "microchip_spw/spw_registers.h"|g' {} +
 find "$TARGET_DIR" -type f -exec sed -i 's|microchip_spw/||g' {} +
 
+cp -r "${SOURCES}/src/samrh71_rtems_serial" "${PREFIX}/include/TASTE-SAMRH71-RTEMS-Drivers/"
+
 cp -r "${SOURCES}/configurations" "${PREFIX}/include/TASTE-SAMRH71-RTEMS-Drivers/configurations"
