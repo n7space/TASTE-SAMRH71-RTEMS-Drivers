@@ -810,12 +810,11 @@ void Samrh71RtemsSerialPoll(rtems_task_argument private_data)
 			self->m_rx_semaphore, RTEMS_WAIT, RTEMS_NO_TIMEOUT);
 		assert(obtainResult == RTEMS_SUCCESSFUL);
 
-		const size_t length =
-			ByteFifo_getCount(&self->m_hal_uart.rxFifo);
 		ByteFifo byteFifo;
 		ByteFifo_init(&byteFifo, self->m_recv_buffer,
 			      Serial_SAMRH71_RTEMS_RECV_BUFFER_SIZE);
 		Uart_readRxFifo(&self->m_hal_uart.uart, &byteFifo);
+		const size_t length = ByteFifo_getCount(byteFifo);
 		if (self->m_raw_mode) {
 			for (size_t i = 0; i < length; i++) {
 				// if raw mode is enabled, call the Broker directly
