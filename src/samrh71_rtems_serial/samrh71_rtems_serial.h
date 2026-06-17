@@ -90,8 +90,8 @@ typedef struct {
 /**
  * @brief Function pointer definition for registering uart error callback.
  */
-typedef void (*Samrh71RtemsSerial_UserUartErrorCallback)(Uart_ErrorFlags,
-							 void *);
+typedef void (*Samrh71RtemsSerial_UserUartErrorCallback)(
+	const Uart_ErrorFlags *, void *);
 
 /**
  * @brief Initialize samrh71_rtems_serial driver.
