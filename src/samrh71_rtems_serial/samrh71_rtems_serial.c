@@ -176,8 +176,9 @@ static void SamRH71RtemsSerial_Init_global()
 	}
 }
 
-static inline void
-Samrh71RtemsSerial_uart_error_handler(Uart_ErrorFlags errorFlags, void *arg)
+static void
+Samrh71RtemsSerial_uart_error_handler(const Uart_ErrorFlags *errorFlags,
+				      void *arg)
 {
 	(void)arg;
 	if (Samrh71RtemsSerial_user_uart_error_callback != NULL) {
@@ -523,6 +524,8 @@ inline static void Samrh71RtemsSerial_uart_init_handle(Uart *uart, Uart_Id id)
 	case Uart_Id_9:
 		uart9handle = uart;
 		break;
+	default:
+		assert(false && "Unknown Uart_Id");
 	}
 }
 
@@ -580,7 +583,8 @@ static void SamRH71RtemsSerialInit_uart_write(
 		.arg = halUart
 	};
 
-	ByteFifo_initFromBytes(&halUart->txFifo, buffer, length);
+	ByteFifo_initFromBytes(&halUart->txFifo, (uint8_t *const)buffer,
+			       length);
 
 	Uart_registerErrorHandler(&halUart->uart, errorHandler);
 	Uart_writeAsync(&halUart->uart, &halUart->txFifo, txHandler);
@@ -784,25 +788,10 @@ void Samrh71RtemsSerialInit(
 	assert(taskStartStatus == RTEMS_SUCCESSFUL);
 }
 
-static inline void SamRH71RtemsSerialInterrupt_rx_enable(
-	samrh71_rtems_serial_private_data *const self)
-{
-	self->m_hal_uart.uart.registers->ier =
-		UART_IER_RXRDY_MASK | UART_IER_FRAME_MASK | UART_IER_OVRE_MASK;
-}
-
-static inline void SamRH71RtemsSerialInterrupt_rx_disable(
-	samrh71_rtems_serial_private_data *const self)
-{
-	self->m_hal_uart.uart.registers->idr =
-		UART_IDR_RXRDY_MASK | UART_IDR_FRAME_MASK | UART_IDR_OVRE_MASK;
-}
-
 void Samrh71RtemsSerialPoll(rtems_task_argument private_data)
 {
 	samrh71_rtems_serial_private_data *self =
 		(samrh71_rtems_serial_private_data *)private_data;
-	size_t length = 0;
 
 	if (!self->m_raw_mode) {
 		// if raw mode is disabled, start the Escaper's decoder
@@ -816,28 +805,24 @@ void Samrh71RtemsSerialPoll(rtems_task_argument private_data)
 				     Serial_SAMRH71_RTEMS_RECV_BUFFER_SIZE,
 				     self->m_uart_rx_handler);
 	while (true) {
-		/// Wait for data to arrive. Semaphore will be given
+		// Wait for data to arrive. Semaphore will be given
 		obtainResult = rtems_semaphore_obtain(
 			self->m_rx_semaphore, RTEMS_WAIT, RTEMS_NO_TIMEOUT);
 		assert(obtainResult == RTEMS_SUCCESSFUL);
 
-		length = ByteFifo_getCount(&self->m_hal_uart.rxFifo);
-
-		for (size_t i = 0; i < length; i++) {
-			// TODO Create a new ByteFifo with self->m_recv_buffer
-			// Use Uart_readRxFifo, which handles critical section internally
-			SamRH71RtemsSerialInterrupt_rx_disable(self);
-			ByteFifo_pull(&self->m_hal_uart.rxFifo,
-				      &self->m_recv_buffer[i]);
-			SamRH71RtemsSerialInterrupt_rx_enable(self);
-			if (self->m_raw_mode) {
+		ByteFifo byteFifo;
+		ByteFifo_init(&byteFifo, self->m_recv_buffer,
+			      Serial_SAMRH71_RTEMS_RECV_BUFFER_SIZE);
+		Uart_readRxFifo(&self->m_hal_uart.uart, &byteFifo);
+		const size_t length = ByteFifo_getCount(byteFifo);
+		if (self->m_raw_mode) {
+			for (size_t i = 0; i < length; i++) {
 				// if raw mode is enabled, call the Broker directly
 				Broker_receive_packet(self->m_ip_device_bus_id,
 						      &self->m_recv_buffer[i],
 						      1);
 			}
-		}
-		if (!self->m_raw_mode) {
+		} else {
 			// if raw mode is disabled, use Escaper
 			Escaper_decode_packet(&self->m_escaper,
 					      self->m_ip_device_bus_id,
