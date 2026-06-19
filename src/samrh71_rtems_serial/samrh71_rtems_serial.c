@@ -128,7 +128,6 @@ typedef enum {
 	Flexcom_Id_1 = 1, ///< Flexcom device 1.
 	Flexcom_Id_2 = 2, ///< Flexcom device 2.
 	Flexcom_Id_3 = 3, ///< Flexcom device 3.
-
 	Flexcom_Id_4 = 4, ///< Flexcom device 4.
 	Flexcom_Id_5 = 5, ///< Flexcom device 5.
 	Flexcom_Id_6 = 6, ///< Flexcom device 6.
@@ -302,27 +301,27 @@ Samrh71RtemsSerial_get_uart_tx_pin_config(
 
 	case Serial_SamRH71_Rtems_Device_T_uart5:
 		return Samrh71RtemsSerial_make_uart_pin_config(
-			Pio_Port_C, Pmc_PeripheralId_Flexcom4, PIO_PIN_9,
+			Pio_Port_C, Pmc_PeripheralId_Flexcom5, PIO_PIN_9,
 			Pio_Control_PeripheralA);
 
 	case Serial_SamRH71_Rtems_Device_T_uart6:
 		return Samrh71RtemsSerial_make_uart_pin_config(
-			Pio_Port_B, Pmc_PeripheralId_Flexcom4, PIO_PIN_6,
+			Pio_Port_B, Pmc_PeripheralId_Flexcom6, PIO_PIN_6,
 			Pio_Control_PeripheralA);
 
 	case Serial_SamRH71_Rtems_Device_T_uart7:
 		return Samrh71RtemsSerial_make_uart_pin_config(
-			Pio_Port_B, Pmc_PeripheralId_Flexcom4, PIO_PIN_4,
+			Pio_Port_B, Pmc_PeripheralId_Flexcom7, PIO_PIN_4,
 			Pio_Control_PeripheralA);
 
 	case Serial_SamRH71_Rtems_Device_T_uart8:
 		return Samrh71RtemsSerial_make_uart_pin_config(
-			Pio_Port_A, Pmc_PeripheralId_Flexcom4, PIO_PIN_27,
+			Pio_Port_A, Pmc_PeripheralId_Flexcom8, PIO_PIN_27,
 			Pio_Control_PeripheralA);
 
 	case Serial_SamRH71_Rtems_Device_T_uart9:
 		return Samrh71RtemsSerial_make_uart_pin_config(
-			Pio_Port_A, Pmc_PeripheralId_Flexcom4, PIO_PIN_25,
+			Pio_Port_A, Pmc_PeripheralId_Flexcom9, PIO_PIN_25,
 			Pio_Control_PeripheralA);
 
 	default:
@@ -365,27 +364,27 @@ Samrh71RtemsSerial_get_uart_rx_pin_config(
 
 	case Serial_SamRH71_Rtems_Device_T_uart5:
 		return Samrh71RtemsSerial_make_uart_pin_config(
-			Pio_Port_C, Pmc_PeripheralId_Flexcom4, PIO_PIN_0,
+			Pio_Port_C, Pmc_PeripheralId_Flexcom5, PIO_PIN_10,
 			Pio_Control_PeripheralA);
 
 	case Serial_SamRH71_Rtems_Device_T_uart6:
 		return Samrh71RtemsSerial_make_uart_pin_config(
-			Pio_Port_B, Pmc_PeripheralId_Flexcom4, PIO_PIN_7,
+			Pio_Port_B, Pmc_PeripheralId_Flexcom6, PIO_PIN_7,
 			Pio_Control_PeripheralA);
 
 	case Serial_SamRH71_Rtems_Device_T_uart7:
 		return Samrh71RtemsSerial_make_uart_pin_config(
-			Pio_Port_B, Pmc_PeripheralId_Flexcom4, PIO_PIN_5,
+			Pio_Port_B, Pmc_PeripheralId_Flexcom7, PIO_PIN_5,
 			Pio_Control_PeripheralA);
 
 	case Serial_SamRH71_Rtems_Device_T_uart8:
 		return Samrh71RtemsSerial_make_uart_pin_config(
-			Pio_Port_A, Pmc_PeripheralId_Flexcom4, PIO_PIN_28,
+			Pio_Port_A, Pmc_PeripheralId_Flexcom8, PIO_PIN_28,
 			Pio_Control_PeripheralA);
 
 	case Serial_SamRH71_Rtems_Device_T_uart9:
 		return Samrh71RtemsSerial_make_uart_pin_config(
-			Pio_Port_A, Pmc_PeripheralId_Flexcom4, PIO_PIN_26,
+			Pio_Port_A, Pmc_PeripheralId_Flexcom9, PIO_PIN_26,
 			Pio_Control_PeripheralA);
 
 	default:
@@ -814,7 +813,7 @@ void Samrh71RtemsSerialPoll(rtems_task_argument private_data)
 		ByteFifo_init(&byteFifo, self->m_recv_buffer,
 			      Serial_SAMRH71_RTEMS_RECV_BUFFER_SIZE);
 		Uart_readRxFifo(&self->m_hal_uart.uart, &byteFifo);
-		const size_t length = ByteFifo_getCount(byteFifo);
+		const size_t length = ByteFifo_getCount(&byteFifo);
 		if (self->m_raw_mode) {
 			for (size_t i = 0; i < length; i++) {
 				// if raw mode is enabled, call the Broker directly
