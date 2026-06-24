@@ -1,0 +1,635 @@
+/**@file
+ * This file is part of the TASTE SAMRH71 RTEMS Drivers.
+ *
+ * @copyright 2026 N7 Space Sp. z o.o.
+ *
+ * Licensed under the ESA Public License (ESA-PL) Permissive (Type 3),
+ * Version 2.4 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://essr.esa.int/license/list
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "samrh71_can_generic.h"
+
+#include "samrh71-rtems-can-driver.h"
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
+#include <assert.h>
+
+#include <Mcan/Mcan.h>
+#include <Nvic/Nvic.h>
+#include <Pmc/Pmc.h>
+#include <Pio/samrh/Pio.h>
+#include <Pmc/PmcPeripheralId.h>
+#include <Utils/ErrorCode.h>
+
+#include <Broker.h>
+#include <system_spec.h>
+#include <SamRH71Core.h>
+
+#define SAMRH71_CAN_SEND_TIMEOUT 4 /* in systicks */
+#define CONFIG_TIMEOUT 1000u
+#define MCAN_MAX_DATA_SIZE 8u
+#define CAN_EXTENDED_ID_BIT 0x20000000u
+
+static bool isMcanPckConfigured = false;
+static const CAN_SamRH71_Rtems_Conf_T *firstConfig = NULL;
+
+static void mcan_int0_Handler(void *const private_data)
+{
+	const samrh71_can_generic_private_data *const self =
+		(samrh71_can_generic_private_data *const)private_data;
+
+	Mcan_InterruptStatus status = { 0 };
+	Mcan_getInterruptStatus(&self->mcan, &status);
+
+	if (status.hasRf0nOccurred) {
+		const rtems_status_code releaseResult =
+			rtems_semaphore_release(self->m_rx_semaphore);
+		assert(releaseResult == RTEMS_SUCCESSFUL);
+	}
+
+	if (status.hasTcOccurred) {
+		const rtems_status_code releaseResult =
+			rtems_semaphore_release(self->m_tx_semaphore);
+		assert(releaseResult == RTEMS_SUCCESSFUL);
+	}
+}
+
+static bool
+waitForTransmissionFinished(const samrh71_can_generic_private_data *const self,
+			    const uint8_t index)
+{
+	const rtems_status_code obtainResult = rtems_semaphore_obtain(
+		self->m_tx_semaphore, RTEMS_WAIT, SAMRH71_CAN_SEND_TIMEOUT);
+	if (obtainResult != RTEMS_SUCCESSFUL) {
+		assert(0 && "Could not obtain TX semaphore!");
+		return false;
+	}
+
+	return Mcan_txBufferIsTransmissionFinished(&self->mcan, index);
+}
+
+static void configurePioCan0(Pio *const pio)
+{
+	const Pio_Pin_Config pioCanTxConfig = {
+		.control = Pio_Control_PeripheralA,
+		.direction = Pio_Direction_Output,
+		.pull = Pio_Pull_Up,
+		.filter = Pio_Filter_None,
+		.isMultiDriveEnabled = false,
+		.irq = Pio_Irq_None,
+		.driveStrength = Pio_Drive_Low,
+		.isSchmittTriggerDisabled = false,
+	};
+
+	SamRH71Core_EnablePeripheralClock(Pmc_PeripheralId_PioB);
+	ErrorCode errorCode = 0;
+
+	const bool pioInitStatus = Pio_init(Pio_Port_B, pio, &errorCode);
+	assert(pioInitStatus);
+	assert(errorCode == ErrorCode_NoError);
+
+	const bool pioSetConfigStatus = Pio_setPinsConfig(
+		pio, PIO_PIN_2 | PIO_PIN_3, &pioCanTxConfig, &errorCode);
+	assert(pioSetConfigStatus);
+	assert(errorCode == ErrorCode_NoError);
+}
+
+static void configurePioCan1(Pio *const pio)
+{
+	const Pio_Pin_Config pioCanTxConfig = {
+		.control = Pio_Control_PeripheralC,
+		.direction = Pio_Direction_Output,
+		.pull = Pio_Pull_Up,
+		.filter = Pio_Filter_None,
+		.isMultiDriveEnabled = false,
+		.irq = Pio_Irq_None,
+		.driveStrength = Pio_Drive_Low,
+		.isSchmittTriggerDisabled = false,
+	};
+
+	SamRH71Core_EnablePeripheralClock(Pmc_PeripheralId_PioC);
+	ErrorCode errorCode = 0;
+
+	const bool pioInitStatus = Pio_init(Pio_Port_C, pio, &errorCode);
+	assert(pioInitStatus);
+	assert(errorCode == ErrorCode_NoError);
+
+	const bool pioSetConfigStatus = Pio_setPinsConfig(
+		pio, PIO_PIN_14 | PIO_PIN_12, &pioCanTxConfig, &errorCode);
+	assert(pioSetConfigStatus);
+	assert(errorCode == ErrorCode_NoError);
+}
+
+static Pmc_PckSrc getPckSource(const CAN_SamRH71_Rtems_Conf_T *const config)
+{
+	switch (config->pck_source) {
+	case pck_clock_source_main_clock:
+		return Pmc_PckSrc_Mainck;
+	case pck_clock_source_plla_clock:
+		return Pmc_PckSrc_Pllack;
+	default:
+		assert(0 &&
+		       "Cannot determine PCK source, unknown configuration value");
+		// for builds with asserts disabled - fallback to Mainck to prevent UB
+		return Pmc_PckSrc_Mainck;
+	}
+}
+
+static void configureMcanPck(const CAN_SamRH71_Rtems_Conf_T *const config)
+{
+	if (isMcanPckConfigured) {
+		assert(firstConfig != NULL);
+		assert((firstConfig->pck_source == config->pck_source) &&
+		       "Cannot configure PCK5, the driver has different configuration than other.");
+		assert((firstConfig->pck_prescaler == config->pck_prescaler) &&
+		       "Cannot configure PCK5, the driver has different configuration than other.");
+	} else {
+		firstConfig = config;
+		isMcanPckConfigured = true;
+	}
+
+	const Pmc_PckConfig pckConfig = {
+		.isEnabled = true,
+		.src = getPckSource(config),
+		.presc = config->pck_prescaler,
+	};
+
+	const bool setCfgResult = SamRH71Core_SetPckConfig(
+		Pmc_PckId_5, &pckConfig, PMC_DEFAULT_TIMEOUT, NULL);
+	assert(setCfgResult);
+}
+
+static void configureMcan0(samrh71_can_generic_private_data *const self)
+{
+	configurePioCan0(&self->pioCanTx);
+	configureMcanPck(self->m_config);
+
+	SamRH71Core_InterruptSubscribe(Nvic_Irq_Mcan0_Irq0, "mcan0_0",
+				      mcan_int0_Handler, self);
+	SamRH71Core_EnablePeripheralClock(Pmc_PeripheralId_Mcan0);
+	Mcan_init(&self->mcan, Mcan_getDeviceRegisters(Mcan_Id_0));
+}
+
+static void configureMcan1(samrh71_can_generic_private_data *const self)
+{
+	configurePioCan1(&self->pioCanTx);
+	configureMcanPck(self->m_config);
+	SamRH71Core_InterruptSubscribe(Nvic_Irq_Mcan1_Irq0, "mcan1_0",
+				      mcan_int0_Handler, self);
+	SamRH71Core_EnablePeripheralClock(Pmc_PeripheralId_Mcan1);
+	Mcan_init(&self->mcan, Mcan_getDeviceRegisters(Mcan_Id_1));
+}
+
+static Mcan_Config
+prepareMcanConfig(samrh71_can_generic_private_data *const self)
+{
+	static const Mcan_Config defaultConfig = {
+    .msgRamBaseAddress = NULL,
+    .mode = Mcan_Mode_Normal,
+    .isFdEnabled = false,
+    .nominalBitTiming = {
+      .bitRatePrescaler = 0u,
+      .synchronizationJump = 2u,
+      .timeSegmentAfterSamplePoint = 2u,
+      .timeSegmentBeforeSamplePoint = 15u,
+    },
+    .dataBitTiming = {
+      .bitRatePrescaler = 0u,
+      .synchronizationJump = 2u,
+      .timeSegmentAfterSamplePoint = 2u,
+      .timeSegmentBeforeSamplePoint = 15u,
+    },
+    .transmitterDelayCompensation = {
+      .isEnabled = false,
+      .filter = 0u,
+      .offset = 0u,
+    },
+    .timestampClk = Mcan_TimestampClk_Internal,
+    .timestampTimeoutPrescaler = 14u,
+    .timeout = {
+      .isEnabled = false,
+      .type = Mcan_TimeoutType_Continuous,
+      .period = 0u,
+    },
+    .standardIdFilter = {
+      .isIdRejected = false,
+      .nonMatchingPolicy = Mcan_NonMatchingPolicy_RxFifo0,
+      .filterListAddress = NULL,
+      .filterListSize = 0u,
+    },
+    .extendedIdFilter = {
+      .isIdRejected = false,
+      .nonMatchingPolicy = Mcan_NonMatchingPolicy_RxFifo0,
+      .filterListAddress = NULL,
+      .filterListSize = 0u,
+    },
+    .rxFifo0 = {
+      .isEnabled = true,
+      .startAddress = NULL,
+      .size = MSGRAM_RXFIFO0_SIZE / sizeof(uint32_t),
+      .watermark = 0u,
+      .mode = Mcan_RxFifoOperationMode_Blocking,
+      .elementSize = Mcan_ElementSize_8,
+    },
+    .rxFifo1 = {
+      .isEnabled = false,
+      .startAddress = NULL,
+      .size = MSGRAM_RXFIFO1_SIZE / sizeof(uint32_t),
+      .watermark = 0u,
+      .mode = Mcan_RxFifoOperationMode_Blocking,
+      .elementSize = Mcan_ElementSize_8,
+    },
+    .rxBuffer = {
+      .startAddress = NULL,
+      .elementSize = Mcan_ElementSize_8,
+    },
+    .txBuffer = {
+      .isEnabled = true,
+      .startAddress = NULL,
+      .bufferSize = MSGRAM_TXBUFFER_SIZE / sizeof(uint32_t),
+      .queueSize = 0u,
+      .queueType = Mcan_TxQueueType_Fifo,
+      .elementSize = Mcan_ElementSize_8,
+    },
+    .txEventFifo = {.isEnabled = true,
+                    .startAddress = NULL,
+                    .size = MSGRAM_TXEVENTINFO_SIZE / sizeof(uint32_t),
+                    .watermark = 0,
+    },
+    .interrupts = {{.isEnabled = false, .line = 0}},
+    .isLine0InterruptEnabled = true,
+    .isLine1InterruptEnabled = false,
+    .wdtCounter = 0u,
+  };
+
+	Mcan_Config conf = defaultConfig;
+	conf.msgRamBaseAddress = self->msgRam;
+	conf.standardIdFilter.filterListAddress =
+		&self->msgRam[MSGRAM_STDID_FILTER_OFFSET];
+	conf.extendedIdFilter.filterListAddress =
+		&self->msgRam[MSGRAM_EXTID_FILTER_OFFSET];
+	conf.rxFifo0.startAddress = &self->msgRam[MSGRAM_RXFIFO0_OFFSET];
+	conf.rxFifo1.startAddress = &self->msgRam[MSGRAM_RXFIFO1_OFFSET];
+	conf.rxBuffer.startAddress = &self->msgRam[MSGRAM_RXBUFFER_OFFSET];
+	conf.txBuffer.startAddress = &self->msgRam[MSGRAM_TXBUFFER_OFFSET];
+	conf.txEventFifo.startAddress =
+		&self->msgRam[MSGRAM_TXEVENTINFO_OFFSET];
+
+	conf.nominalBitTiming.bitRatePrescaler =
+		self->m_config->bit_rate_prescaler;
+	conf.nominalBitTiming.synchronizationJump =
+		self->m_config->synchronization_jump;
+	conf.nominalBitTiming.timeSegmentAfterSamplePoint =
+		self->m_config->time_segments_after_sample_point;
+	conf.nominalBitTiming.timeSegmentBeforeSamplePoint =
+		self->m_config->time_segments_before_sample_point;
+	conf.dataBitTiming.bitRatePrescaler =
+		self->m_config->bit_rate_prescaler;
+	conf.dataBitTiming.synchronizationJump =
+		self->m_config->synchronization_jump;
+	conf.dataBitTiming.timeSegmentAfterSamplePoint =
+		self->m_config->time_segments_after_sample_point;
+	conf.dataBitTiming.timeSegmentBeforeSamplePoint =
+		self->m_config->time_segments_before_sample_point;
+
+	conf.interrupts[Mcan_Interrupt_Rf0n].isEnabled = true;
+	conf.interrupts[Mcan_Interrupt_Rf0n].line = Mcan_InterruptLine_0;
+	conf.interrupts[Mcan_Interrupt_Tc].isEnabled = true;
+	conf.interrupts[Mcan_Interrupt_Tc].line = Mcan_InterruptLine_0;
+
+	return conf;
+}
+
+static void getCanIdAndTypeFromMessageData(const uint8_t *const data,
+					   const size_t length,
+					   Mcan_IdType *const idType,
+					   uint32_t *const id)
+{
+	// first 29 bits are CAN-ID
+	// the bit 30 determines if CAN-ID is 11-bit (standard) or 29-bit (extended)
+	const uint32_t canExtendedIdMask = 0x1fffffffu;
+	const uint32_t canStandardIdMask = 0x000007ffu;
+
+	assert(length >= sizeof(uint32_t));
+	uint32_t address = 0;
+	memcpy(&address, data, sizeof(uint32_t));
+
+	if (idType != NULL) {
+		*idType = (address & CAN_EXTENDED_ID_BIT) ?
+				  Mcan_IdType_Extended :
+				  Mcan_IdType_Standard;
+	}
+
+	if (id != NULL) {
+		*id = (address & CAN_EXTENDED_ID_BIT) ?
+			      address & canExtendedIdMask :
+			      address & canStandardIdMask;
+	}
+}
+
+static bool ifaceUsesStaticId(const samrh71_can_generic_private_data *const self)
+{
+	return self->m_config->address.kind == static_can_id_PRESENT;
+}
+
+static bool
+ifaceUsesDynamicId(const samrh71_can_generic_private_data *const self)
+{
+	return self->m_config->address.kind ==
+	       application_control_can_id_PRESENT;
+}
+
+static int maxMessageSize(const samrh71_can_generic_private_data *const self)
+{
+	return bus_message_size[self->m_bus_id];
+}
+
+static bool shouldUseEscaper(const samrh71_can_generic_private_data *const self)
+{
+	// escaper should be used only when max message size is greater than
+	// max CAN frame length, and can-id has static configuration
+	return ifaceUsesStaticId(self) &&
+	       (maxMessageSize(self) > (int)MCAN_MAX_DATA_SIZE);
+}
+
+void SamRH71RtemsCanInit(
+	void *const private_data, const enum SystemBus bus_id,
+	const enum SystemDevice device_id,
+	const CAN_SamRH71_Rtems_Conf_T *const device_configuration,
+	const CAN_SamTH71_Rtems_Conf_T *const remote_device_configuration)
+{
+	(void)device_id;
+	(void)remote_device_configuration;
+	samrh71_can_generic_private_data *const self =
+		(samrh71_can_generic_private_data *const)private_data;
+
+	memset(self->msgRam, 0, MSGRAM_SIZE * sizeof(uint32_t));
+	SamRH71Core_DisableDataCacheInRegion(self->msgRam,
+					    MSGRAM_BYTE_SIZE_EXPONENT - 1);
+	self->m_bus_id = bus_id;
+	self->m_config = device_configuration;
+
+	if (self->m_config->can_interface == mcan_interface_mcan0) {
+		configureMcan0(self);
+	} else if (device_configuration->can_interface ==
+		   mcan_interface_mcan1) {
+		configureMcan1(self);
+	} else {
+		assert(0 &&
+		       "unknown mcan value of can-interface in configuration");
+		return;
+	}
+
+	const Mcan_Config conf = prepareMcanConfig(self);
+
+	ErrorCode errCode = ErrorCode_NoError;
+	const bool setConfResult =
+		Mcan_setConfig(&self->mcan, &conf, CONFIG_TIMEOUT, &errCode);
+	assert(setConfResult);
+	assert(errCode == ErrorCode_NoError);
+
+	const size_t decodingBufferSize = sizeof(self->m_value_buffer.m_data);
+	// Defensive programming - make sure that `m_data` buffer is large enough to store decoded message.
+	assert((decodingBufferSize >= (size_t)maxMessageSize(self)) &&
+	       "Decoding buffer is not large enough to store whole message!");
+
+	if (shouldUseEscaper(self)) {
+		Escaper_init(&self->m_escaper, self->m_tx_buffer,
+			     MCAN_MAX_DATA_SIZE, self->m_value_buffer.m_data,
+			     (size_t)maxMessageSize(self));
+	}
+
+	if (ifaceUsesDynamicId(self)) {
+		// Sanity check:
+		// Using dynamic (application-controller) CAN ID is not supported when max message size is
+		// greater than MCAN_MAX_DATA_SIZE + sizeof(uint32_t) + sizeof(uint8_t), because it would require splitting the
+		// payload - and therefore escaping the data.
+		// `uint32_t` is used to store the CAN frame ID, while `uint8_t` is used to determine the data length.
+		// This is an example ACN encoding of full CAN frame in this configuration:
+		// Can-Frame [] {
+		//   id [],
+		//   data-size INTEGER [size 8, encoding pos-int],
+		//   data [size data-size]
+		// }
+		assert(((size_t)maxMessageSize(self) <=
+			(MCAN_MAX_DATA_SIZE + sizeof(uint32_t) +
+			 sizeof(uint8_t))) &&
+		       "incorrect configuration, application-control-can-id cannot be used when payload length is greater than maximum frame size + ID + length");
+	}
+
+	const rtems_status_code status_code_create_rx_sem =
+		rtems_semaphore_create(SamRH71Core_GenerateNewSemaphoreName(),
+				       0, // Initial value, locked
+				       RTEMS_SIMPLE_BINARY_SEMAPHORE,
+				       0, // Priority ceiling
+				       &self->m_rx_semaphore);
+
+	assert(status_code_create_rx_sem == RTEMS_SUCCESSFUL);
+
+	const rtems_status_code status_code_create_tx_sem =
+		rtems_semaphore_create(SamRH71Core_GenerateNewSemaphoreName(),
+				       0, // Initial value, locked
+				       RTEMS_SIMPLE_BINARY_SEMAPHORE,
+				       0, // Priority ceiling
+				       &self->m_tx_semaphore);
+	assert(status_code_create_tx_sem == RTEMS_SUCCESSFUL);
+
+	const rtems_task_config taskConfig = {
+		.name = SamRH71Core_GenerateNewTaskName(),
+		.initial_priority = 1,
+		.storage_area = self->m_task_buffer,
+		.storage_size = Can_SAMRH71_RTEMS_TASK_BUFFER_SIZE,
+		.maximum_thread_local_storage_size = Can_SAMRH71_RTEMS_TLS_SIZE,
+		.storage_free = NULL,
+		.initial_modes = RTEMS_PREEMPT,
+		.attributes = RTEMS_DEFAULT_ATTRIBUTES | RTEMS_FLOATING_POINT
+	};
+
+	const rtems_status_code taskConstructionResult =
+		rtems_task_construct(&taskConfig, &self->m_task);
+	assert(taskConstructionResult == RTEMS_SUCCESSFUL);
+
+	const rtems_status_code taskStartStatus = rtems_task_start(
+		self->m_task, (rtems_task_entry)&SamRH71RtemsCanPoll,
+		(rtems_task_argument)self);
+	assert(taskStartStatus == RTEMS_SUCCESSFUL);
+}
+
+void SamRH71RtemsCanPoll(rtems_task_argument private_data)
+{
+	samrh71_can_generic_private_data *const self =
+		(samrh71_can_generic_private_data *const)private_data;
+	ErrorCode errCode = ErrorCode_NoError;
+
+	if (shouldUseEscaper(self)) {
+		Escaper_start_decoder(&self->m_escaper);
+	}
+
+	while (true) {
+		/// Wait for data to arrive. Semaphore will be given
+		const rtems_status_code obtainResult = rtems_semaphore_obtain(
+			self->m_rx_semaphore, RTEMS_WAIT, RTEMS_NO_TIMEOUT);
+		assert(obtainResult == RTEMS_SUCCESSFUL);
+
+		Mcan_RxFifoStatus fifoStatus = { 0 };
+		const bool fifoStatusResult = Mcan_getRxFifoStatus(
+			&self->mcan, Mcan_RxFifoId_0, &fifoStatus, NULL);
+		assert(fifoStatusResult);
+
+		while (fifoStatus.count > 0) {
+			Mcan_RxElement rxElement = { 0 };
+			rxElement.data = self->m_rx_buffer;
+
+			const bool fifoPullResult =
+				Mcan_rxFifoPull(&self->mcan, Mcan_RxFifoId_0,
+						&rxElement, &errCode);
+
+			assert(fifoPullResult);
+			assert(errCode == ErrorCode_NoError);
+
+			if (shouldUseEscaper(self)) {
+				// if Escaper is enabled, then it will call Broker_receive_packet
+				Escaper_decode_packet(&self->m_escaper,
+						      self->m_bus_id,
+						      self->m_rx_buffer,
+						      rxElement.dataSize,
+						      &Broker_receive_packet);
+			} else {
+				// without Escaper Broker_receive_packet needs to be called directly
+				if (ifaceUsesDynamicId(self)) {
+					uint32_t canId = rxElement.id;
+					if (rxElement.idType ==
+					    Mcan_IdType_Extended) {
+						canId |= CAN_EXTENDED_ID_BIT;
+					}
+					self->m_value_buffer.m_address = canId;
+
+					memcpy(self->m_value_buffer.m_data +
+						       sizeof(uint32_t),
+					       self->m_rx_buffer,
+					       rxElement.dataSize);
+					Broker_receive_packet(
+						self->m_bus_id,
+						self->m_value_buffer.m_data,
+						rxElement.dataSize +
+							sizeof(uint32_t));
+				} else {
+					Broker_receive_packet(
+						self->m_bus_id,
+						self->m_rx_buffer,
+						rxElement.dataSize);
+				}
+			}
+
+			// Check the fifo status again to drain it, if the frame count > 1
+			const bool drainFifoStatusResult = Mcan_getRxFifoStatus(
+				&self->mcan, Mcan_RxFifoId_0, &fifoStatus,
+				NULL);
+			assert(drainFifoStatusResult);
+		}
+	}
+}
+
+static void SamRH71RtemsCanSendFrame(samrh71_can_generic_private_data *const self,
+				    const Mcan_IdType idType, const uint32_t id,
+				    const uint8_t *const data,
+				    const uint8_t length)
+{
+	assert(length <= MCAN_MAX_DATA_SIZE &&
+	       "Trying to send CAN frame longer than maximum supported size!");
+
+	Mcan_TxElement txElement = { 0 };
+	txElement.esiFlag = Mcan_ElementEsi_Dominant;
+	txElement.idType = idType;
+	txElement.id = id;
+	txElement.frameType = Mcan_FrameType_Data;
+	txElement.marker = 1;
+	txElement.isTxEventStored = false;
+	txElement.isCanFdFormatEnabled = false;
+	txElement.isBitRateSwitchingEnabled = false;
+	txElement.dataSize = length;
+	txElement.data = data;
+	txElement.isInterruptEnabled = true;
+
+	uint8_t pushIndex = 0;
+	ErrorCode errCode = ErrorCode_NoError;
+
+	const bool pushResult =
+		Mcan_txBufferAdd(&self->mcan, txElement, pushIndex, &errCode);
+	assert(pushResult);
+	assert(errCode == ErrorCode_NoError);
+
+	const bool result = waitForTransmissionFinished(self, pushIndex);
+	assert(result);
+}
+
+void SamRH71RtemsCanSend(void *const private_data, const uint8_t *const data,
+			const size_t length)
+{
+	samrh71_can_generic_private_data *const self =
+		(samrh71_can_generic_private_data *const)private_data;
+
+	if (ifaceUsesStaticId(self)) {
+		Mcan_IdType idType = Mcan_IdType_Standard;
+		uint32_t id = 0;
+
+		if (self->m_config->address.u.static_can_id.kind ==
+		    can_id_standard_PRESENT) {
+			idType = Mcan_IdType_Standard;
+			id = self->m_config->address.u.static_can_id.u
+				     .can_id_standard;
+		} else if (self->m_config->address.u.static_can_id.kind ==
+			   can_id_extended_PRESENT) {
+			idType = Mcan_IdType_Extended;
+			id = self->m_config->address.u.static_can_id.u
+				     .can_id_extended;
+		} else {
+			assert(0 &&
+			       "Unknown static can address value in configuration");
+			return;
+		}
+
+		if (shouldUseEscaper(self)) {
+			size_t index = 0;
+			Escaper_start_encoder(&self->m_escaper);
+			size_t packet_length = Escaper_encode_packet(
+				&self->m_escaper, data, length, &index);
+			while (packet_length > 0) {
+				SamRH71RtemsCanSendFrame(self, idType, id,
+							self->m_tx_buffer,
+							packet_length);
+				packet_length = Escaper_encode_packet(
+					&self->m_escaper, data, length, &index);
+			}
+		} else {
+			SamRH71RtemsCanSendFrame(self, idType, id, data, length);
+		}
+
+	} else if (ifaceUsesDynamicId(self)) {
+		assert(length >= sizeof(uint32_t) &&
+		       "Not enough data to transmit in dynamic ID config!");
+
+		Mcan_IdType idType = 0;
+		uint32_t id = 0;
+		getCanIdAndTypeFromMessageData(data, length, &idType, &id);
+
+		SamRH71RtemsCanSendFrame(self, idType, id,
+					data + sizeof(uint32_t),
+					length - sizeof(uint32_t));
+	} else {
+		assert(0 && "Unknown address kind in configuration");
+		return;
+	}
+}
