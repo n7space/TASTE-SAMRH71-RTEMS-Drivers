@@ -7,7 +7,10 @@ SAMRH71-RTEMS-CAN-DRIVER DEFINITIONS AUTOMATIC TAGS ::= BEGIN
 
     CAN-Samrh71-Rtems-PCK-Clock-Source ::= ENUMERATED {
         pck-clock-source-main-clock,
-        pck-clock-source-plla-clock
+        pck-clock-source-plla-clock,
+        pck-clock-source-pllb-clock,
+        pck-clock-source-master-clock,
+        pck-clock-source-rc2-clock
     }
 
     CAN-Samrh71-Rtems-PCK-Prescaler ::= INTEGER (0 .. 255)
