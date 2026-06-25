@@ -128,6 +128,33 @@ static void configurePioCan0(Pio * pio)
 		Pio_setPortConfig(pio, &pioCanRxConfig, &errorCode);
 	assert(pioSetRxConfigStatus);
 	assert(errorCode == ErrorCode_NoError);
+
+    Pio pioStandby;
+    bool pioStatus = Pio_init(Pio_Port_C, &pioStandby, &errorCode);
+    assert(pioStatus);
+    assert(errorCode == ErrorCode_NoError);
+
+    const Pio_Port_Config pioStandbyConfig = {
+        .pins = PIO_PIN_7,
+        .pinsConfig = {
+            .control = Pio_Control_Pio,
+            .direction = Pio_Direction_Output,
+            .pull = Pio_Pull_None,
+            .isOpenDrainEnabled  = false,
+            .irq = Pio_Irq_EdgeFalling,
+            .isIrqEnabled = false,
+            .driveStrength = Pio_Current_8m,
+            .isSchmittTriggerDisabled = false,
+        },
+        .debounceFilterDiv = 0,
+    };
+
+    const bool pioSetStandbyStatus =
+        Pio_setPortConfig(&pioStandby, &pioStandbyConfig, &errorCode);
+    assert(pioSetStandbyStatus);
+    assert(errorCode == ErrorCode_NoError);
+
+    Pio_resetPins(&pioStandby, PIO_PIN_7);
 }
 
 static void configurePioCan1(Pio * pio)
@@ -178,6 +205,33 @@ static void configurePioCan1(Pio * pio)
 		Pio_setPortConfig(pio, &pioCanRxConfig, &errorCode);
 	assert(pioSetRxConfigStatus);
 	assert(errorCode == ErrorCode_NoError);
+
+    Pio pioStandby;
+    bool pioStatus = Pio_init(Pio_Port_G, &pioStandby, &errorCode);
+    assert(pioStatus);
+    assert(errorCode == ErrorCode_NoError);
+
+    const Pio_Port_Config pioStandbyConfig = {
+        .pins = PIO_PIN_30,
+        .pinsConfig = {
+            .control = Pio_Control_Pio,
+            .direction = Pio_Direction_Output,
+            .pull = Pio_Pull_None,
+            .isOpenDrainEnabled  = false,
+            .irq = Pio_Irq_EdgeFalling,
+            .isIrqEnabled = false,
+            .driveStrength = Pio_Current_8m,
+            .isSchmittTriggerDisabled = false,
+        },
+        .debounceFilterDiv = 0,
+    };
+
+    const bool pioSetStandbyStatus =
+        Pio_setPortConfig(&pioStandby, &pioStandbyConfig, &errorCode);
+    assert(pioSetStandbyStatus);
+    assert(errorCode == ErrorCode_NoError);
+
+    Pio_resetPins(&pioStandby, PIO_PIN_30);
 }
 
 static Pmc_GclkSrc getPckSource(const CAN_SamRH71_Rtems_Conf_T *const config)
