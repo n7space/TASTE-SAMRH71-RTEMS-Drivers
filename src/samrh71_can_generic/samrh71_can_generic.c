@@ -37,7 +37,7 @@
 #include <system_spec.h>
 #include <SamRH71Core.h>
 
-#define SAMRH71_CAN_SEND_TIMEOUT 4 /* in systicks */
+#define SAMRH71_CAN_SEND_TIMEOUT 10 /* in systicks */
 #define CONFIG_TIMEOUT 1000u
 #define MCAN_MAX_DATA_SIZE 8u
 #define CAN_EXTENDED_ID_BIT 0x20000000u
@@ -80,7 +80,7 @@ waitForTransmissionFinished(const samrh71_can_generic_private_data *const self,
 	return Mcan_txBufferIsTransmissionFinished(&self->mcan, index);
 }
 
-static void configurePioCan0(Pio * pio)
+static void configurePioCan0(Pio *pio)
 {
 	// PB6 CANTX0
 	// PB7 CANRX0
@@ -129,12 +129,12 @@ static void configurePioCan0(Pio * pio)
 	assert(pioSetRxConfigStatus);
 	assert(errorCode == ErrorCode_NoError);
 
-    Pio pioStandby;
-    bool pioStatus = Pio_init(Pio_Port_C, &pioStandby, &errorCode);
-    assert(pioStatus);
-    assert(errorCode == ErrorCode_NoError);
+	Pio pioStandby;
+	bool pioStatus = Pio_init(Pio_Port_C, &pioStandby, &errorCode);
+	assert(pioStatus);
+	assert(errorCode == ErrorCode_NoError);
 
-    const Pio_Port_Config pioStandbyConfig = {
+	const Pio_Port_Config pioStandbyConfig = {
         .pins = PIO_PIN_7,
         .pinsConfig = {
             .control = Pio_Control_Pio,
@@ -149,15 +149,15 @@ static void configurePioCan0(Pio * pio)
         .debounceFilterDiv = 0,
     };
 
-    const bool pioSetStandbyStatus =
-        Pio_setPortConfig(&pioStandby, &pioStandbyConfig, &errorCode);
-    assert(pioSetStandbyStatus);
-    assert(errorCode == ErrorCode_NoError);
+	const bool pioSetStandbyStatus =
+		Pio_setPortConfig(&pioStandby, &pioStandbyConfig, &errorCode);
+	assert(pioSetStandbyStatus);
+	assert(errorCode == ErrorCode_NoError);
 
-    Pio_resetPins(&pioStandby, PIO_PIN_7);
+	Pio_resetPins(&pioStandby, PIO_PIN_7);
 }
 
-static void configurePioCan1(Pio * pio)
+static void configurePioCan1(Pio *pio)
 {
 	// PB4 CANTX1
 	// PB5 CANRX1
@@ -206,12 +206,12 @@ static void configurePioCan1(Pio * pio)
 	assert(pioSetRxConfigStatus);
 	assert(errorCode == ErrorCode_NoError);
 
-    Pio pioStandby;
-    bool pioStatus = Pio_init(Pio_Port_G, &pioStandby, &errorCode);
-    assert(pioStatus);
-    assert(errorCode == ErrorCode_NoError);
+	Pio pioStandby;
+	bool pioStatus = Pio_init(Pio_Port_G, &pioStandby, &errorCode);
+	assert(pioStatus);
+	assert(errorCode == ErrorCode_NoError);
 
-    const Pio_Port_Config pioStandbyConfig = {
+	const Pio_Port_Config pioStandbyConfig = {
         .pins = PIO_PIN_30,
         .pinsConfig = {
             .control = Pio_Control_Pio,
@@ -226,12 +226,12 @@ static void configurePioCan1(Pio * pio)
         .debounceFilterDiv = 0,
     };
 
-    const bool pioSetStandbyStatus =
-        Pio_setPortConfig(&pioStandby, &pioStandbyConfig, &errorCode);
-    assert(pioSetStandbyStatus);
-    assert(errorCode == ErrorCode_NoError);
+	const bool pioSetStandbyStatus =
+		Pio_setPortConfig(&pioStandby, &pioStandbyConfig, &errorCode);
+	assert(pioSetStandbyStatus);
+	assert(errorCode == ErrorCode_NoError);
 
-    Pio_resetPins(&pioStandby, PIO_PIN_30);
+	Pio_resetPins(&pioStandby, PIO_PIN_30);
 }
 
 static Pmc_GclkSrc getPckSource(const CAN_SamRH71_Rtems_Conf_T *const config)
@@ -241,12 +241,12 @@ static Pmc_GclkSrc getPckSource(const CAN_SamRH71_Rtems_Conf_T *const config)
 		return Pmc_GclkSrc_Mainck;
 	case CAN_Samrh71_Rtems_PCK_Clock_Source_pck_clock_source_plla_clock:
 		return Pmc_GclkSrc_Pllack;
-    case CAN_Samrh71_Rtems_PCK_Clock_Source_pck_clock_source_pllb_clock:
-        return Pmc_GclkSrc_Pllbck;
-    case CAN_Samrh71_Rtems_PCK_Clock_Source_pck_clock_source_master_clock:
-        return Pmc_GclkSrc_Masterck;
-    case CAN_Samrh71_Rtems_PCK_Clock_Source_pck_clock_source_rc2_clock:
-        return Pmc_GclkSrc_Rc2ck;
+	case CAN_Samrh71_Rtems_PCK_Clock_Source_pck_clock_source_pllb_clock:
+		return Pmc_GclkSrc_Pllbck;
+	case CAN_Samrh71_Rtems_PCK_Clock_Source_pck_clock_source_master_clock:
+		return Pmc_GclkSrc_Masterck;
+	case CAN_Samrh71_Rtems_PCK_Clock_Source_pck_clock_source_rc2_clock:
+		return Pmc_GclkSrc_Rc2ck;
 	default:
 		assert(0 &&
 		       "Cannot determine PCK source, unknown configuration value");
@@ -270,16 +270,15 @@ static void configureMcanPck(const CAN_SamRH71_Rtems_Conf_T *const config)
 		isMcanPckConfigured = true;
 	}
 
-    const Pmc_PeripheralClkConfig pckConfig = {
-        .isPeripheralClkEnabled = true,
-      .isGclkEnabled = true,
-      .gclkSrc = getPckSource(config),
-      .gclkPresc = config->pck_prescaler,
-    };
+	const Pmc_PeripheralClkConfig pckConfig = {
+		.isPeripheralClkEnabled = true,
+		.isGclkEnabled = true,
+		.gclkSrc = getPckSource(config),
+		.gclkPresc = config->pck_prescaler,
+	};
 
-
-	Pmc_setPeripheralClkConfig(&pmc,
-		Pmc_PeripheralId_Mcan1, &pckConfig); // TODO or 0
+	Pmc_setPeripheralClkConfig(&pmc, Pmc_PeripheralId_Mcan0,
+				   &pckConfig); // TODO or 0
 }
 
 static void configureMcan0(samrh71_can_generic_private_data *const self)
@@ -419,6 +418,22 @@ prepareMcanConfig(samrh71_can_generic_private_data *const self)
 	conf.interrupts[Mcan_Interrupt_Rf0n].line = Mcan_InterruptLine_0;
 	conf.interrupts[Mcan_Interrupt_Tc].isEnabled = true;
 	conf.interrupts[Mcan_Interrupt_Tc].line = Mcan_InterruptLine_0;
+	conf.interrupts[Mcan_Interrupt_Bo].isEnabled = true;
+	conf.interrupts[Mcan_Interrupt_Bo].line = Mcan_InterruptLine_0;
+	conf.interrupts[Mcan_Interrupt_Tefl].isEnabled = true;
+	conf.interrupts[Mcan_Interrupt_Tefl].line = Mcan_InterruptLine_0;
+	conf.interrupts[Mcan_Interrupt_Mraf].isEnabled = true;
+	conf.interrupts[Mcan_Interrupt_Mraf].line = Mcan_InterruptLine_0;
+	conf.interrupts[Mcan_Interrupt_Too].isEnabled = true;
+	conf.interrupts[Mcan_Interrupt_Too].line = Mcan_InterruptLine_0;
+	conf.interrupts[Mcan_Interrupt_Ep].isEnabled = true;
+	conf.interrupts[Mcan_Interrupt_Ep].line = Mcan_InterruptLine_0;
+	conf.interrupts[Mcan_Interrupt_Ew].isEnabled = true;
+	conf.interrupts[Mcan_Interrupt_Ew].line = Mcan_InterruptLine_0;
+	conf.interrupts[Mcan_Interrupt_Pea].isEnabled = true;
+	conf.interrupts[Mcan_Interrupt_Pea].line = Mcan_InterruptLine_0;
+	conf.interrupts[Mcan_Interrupt_Ped].isEnabled = true;
+	conf.interrupts[Mcan_Interrupt_Ped].line = Mcan_InterruptLine_0;
 
 	return conf;
 }
@@ -453,7 +468,8 @@ static void getCanIdAndTypeFromMessageData(const uint8_t *const data,
 static bool
 ifaceUsesStaticId(const samrh71_can_generic_private_data *const self)
 {
-	return self->m_config->address.kind == CAN_Samrh71_Rtems_Address_static_can_id_PRESENT;
+	return self->m_config->address.kind ==
+	       CAN_Samrh71_Rtems_Address_static_can_id_PRESENT;
 }
 
 static bool
@@ -493,7 +509,8 @@ void SamRH71RtemsCanInit(
 	self->m_bus_id = bus_id;
 	self->m_config = device_configuration;
 
-	if (self->m_config->can_interface == CAN_Samrh71_Rtems_Interface_T_mcan_interface_mcan0) {
+	if (self->m_config->can_interface ==
+	    CAN_Samrh71_Rtems_Interface_T_mcan_interface_mcan0) {
 		configureMcan0(self);
 	} else if (device_configuration->can_interface ==
 		   CAN_Samrh71_Rtems_Interface_T_mcan_interface_mcan1) {
