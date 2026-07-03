@@ -258,7 +258,7 @@ static Pmc_GclkSrc getPckSource(const CAN_SamRH71_Rtems_Conf_T *const config)
 static Pmc_PeripheralId
 getMcanPeripheralId(const CAN_SamRH71_Rtems_Conf_T *const config)
 {
-	switch (m_config->can_interface) {
+	switch (config->can_interface) {
 	case CAN_Samrh71_Rtems_Interface_T_mcan_interface_mcan0:
 		return Pmc_PeripheralId_Mcan0;
 	case CAN_Samrh71_Rtems_Interface_T_mcan_interface_mcan1:
