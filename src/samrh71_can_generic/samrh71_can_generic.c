@@ -532,6 +532,22 @@ void SamRH71RtemsCanInit(
 		return;
 	}
 
+	const rtems_status_code status_code_create_rx_sem =
+		rtems_semaphore_create(SamRH71Core_GenerateNewSemaphoreName(),
+				       0, // Initial value, locked
+				       RTEMS_SIMPLE_BINARY_SEMAPHORE,
+				       0, // Priority ceiling
+				       &self->m_rx_semaphore);
+	assert(status_code_create_rx_sem == RTEMS_SUCCESSFUL);
+
+	const rtems_status_code status_code_create_tx_sem =
+		rtems_semaphore_create(SamRH71Core_GenerateNewSemaphoreName(),
+				       0, // Initial value, locked
+				       RTEMS_SIMPLE_BINARY_SEMAPHORE,
+				       0, // Priority ceiling
+				       &self->m_tx_semaphore);
+	assert(status_code_create_tx_sem == RTEMS_SUCCESSFUL);
+
 	const Mcan_Config conf = prepareMcanConfig(self);
 
 	ErrorCode errCode = ErrorCode_NoError;
@@ -568,23 +584,6 @@ void SamRH71RtemsCanInit(
 			 sizeof(uint8_t))) &&
 		       "incorrect configuration, application-control-can-id cannot be used when payload length is greater than maximum frame size + ID + length");
 	}
-
-	const rtems_status_code status_code_create_rx_sem =
-		rtems_semaphore_create(SamRH71Core_GenerateNewSemaphoreName(),
-				       0, // Initial value, locked
-				       RTEMS_SIMPLE_BINARY_SEMAPHORE,
-				       0, // Priority ceiling
-				       &self->m_rx_semaphore);
-
-	assert(status_code_create_rx_sem == RTEMS_SUCCESSFUL);
-
-	const rtems_status_code status_code_create_tx_sem =
-		rtems_semaphore_create(SamRH71Core_GenerateNewSemaphoreName(),
-				       0, // Initial value, locked
-				       RTEMS_SIMPLE_BINARY_SEMAPHORE,
-				       0, // Priority ceiling
-				       &self->m_tx_semaphore);
-	assert(status_code_create_tx_sem == RTEMS_SUCCESSFUL);
 
 	const rtems_task_config taskConfig = {
 		.name = SamRH71Core_GenerateNewTaskName(),
