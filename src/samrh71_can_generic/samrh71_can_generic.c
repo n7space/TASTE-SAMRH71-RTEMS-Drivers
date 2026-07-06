@@ -44,6 +44,9 @@
 
 static bool isMcanPckConfigured = false;
 static const CAN_SamRH71_Rtems_Conf_T *firstConfig = NULL;
+static SamRH71RtemsCan_UserErrorCallback SamRH71RtemsCan_user_error_callback =
+	NULL;
+static void *SamRH71RtemsCan_user_error_callback_arg = NULL;
 
 static void mcan_int0_Handler(void *const private_data)
 {
@@ -73,7 +76,11 @@ waitForTransmissionFinished(const samrh71_can_generic_private_data *const self,
 	const rtems_status_code obtainResult = rtems_semaphore_obtain(
 		self->m_tx_semaphore, RTEMS_WAIT, SAMRH71_CAN_SEND_TIMEOUT);
 	if (obtainResult != RTEMS_SUCCESSFUL) {
-		assert(0 && "Could not obtain TX semaphore!");
+		if (SamRH71RtemsCan_user_error_callback != NULL) {
+			SamRH71RtemsCan_user_error_callback(
+				SamRH71RtemsCan_user_error_callback_arg);
+		}
+
 		return false;
 	}
 
@@ -82,6 +89,7 @@ waitForTransmissionFinished(const samrh71_can_generic_private_data *const self,
 
 static void configurePioCan0(Pio *pio)
 {
+	// this configured mcan0 for SAMRH71 Evaluation Kit
 	// PB6 CANTX0
 	// PB7 CANRX0
 	const Pio_Port_Config pioCanTxConfig = {
@@ -129,6 +137,7 @@ static void configurePioCan0(Pio *pio)
 	assert(pioSetRxConfigStatus);
 	assert(errorCode == ErrorCode_NoError);
 
+	// SAMRH71 Evaluation Kit has CAN transciever, which requires standby pin (PC7) configuration
 	Pio pioStandby;
 	bool pioStatus = Pio_init(Pio_Port_C, &pioStandby, &errorCode);
 	assert(pioStatus);
@@ -159,6 +168,7 @@ static void configurePioCan0(Pio *pio)
 
 static void configurePioCan1(Pio *pio)
 {
+	// this configured mcan0 for SAMRH71 Evaluation Kit
 	// PB4 CANTX1
 	// PB5 CANRX1
 	const Pio_Port_Config pioCanTxConfig = {
@@ -206,6 +216,7 @@ static void configurePioCan1(Pio *pio)
 	assert(pioSetRxConfigStatus);
 	assert(errorCode == ErrorCode_NoError);
 
+	// SAMRH71 Evaluation Kit has CAN transciever, which requires standby pin (PG30) configuration
 	Pio pioStandby;
 	bool pioStatus = Pio_init(Pio_Port_G, &pioStandby, &errorCode);
 	assert(pioStatus);
@@ -434,22 +445,6 @@ prepareMcanConfig(samrh71_can_generic_private_data *const self)
 	conf.interrupts[Mcan_Interrupt_Rf0n].line = Mcan_InterruptLine_0;
 	conf.interrupts[Mcan_Interrupt_Tc].isEnabled = true;
 	conf.interrupts[Mcan_Interrupt_Tc].line = Mcan_InterruptLine_0;
-	conf.interrupts[Mcan_Interrupt_Bo].isEnabled = true;
-	conf.interrupts[Mcan_Interrupt_Bo].line = Mcan_InterruptLine_0;
-	conf.interrupts[Mcan_Interrupt_Tefl].isEnabled = true;
-	conf.interrupts[Mcan_Interrupt_Tefl].line = Mcan_InterruptLine_0;
-	conf.interrupts[Mcan_Interrupt_Mraf].isEnabled = true;
-	conf.interrupts[Mcan_Interrupt_Mraf].line = Mcan_InterruptLine_0;
-	conf.interrupts[Mcan_Interrupt_Too].isEnabled = true;
-	conf.interrupts[Mcan_Interrupt_Too].line = Mcan_InterruptLine_0;
-	conf.interrupts[Mcan_Interrupt_Ep].isEnabled = true;
-	conf.interrupts[Mcan_Interrupt_Ep].line = Mcan_InterruptLine_0;
-	conf.interrupts[Mcan_Interrupt_Ew].isEnabled = true;
-	conf.interrupts[Mcan_Interrupt_Ew].line = Mcan_InterruptLine_0;
-	conf.interrupts[Mcan_Interrupt_Pea].isEnabled = true;
-	conf.interrupts[Mcan_Interrupt_Pea].line = Mcan_InterruptLine_0;
-	conf.interrupts[Mcan_Interrupt_Ped].isEnabled = true;
-	conf.interrupts[Mcan_Interrupt_Ped].line = Mcan_InterruptLine_0;
 
 	return conf;
 }
@@ -485,14 +480,14 @@ static bool
 ifaceUsesStaticId(const samrh71_can_generic_private_data *const self)
 {
 	return self->m_config->address.kind ==
-	       CAN_Samrh71_Rtems_Address_static_can_id_PRESENT;
+	       can_samrh71_static_can_id_PRESENT;
 }
 
 static bool
 ifaceUsesDynamicId(const samrh71_can_generic_private_data *const self)
 {
 	return self->m_config->address.kind ==
-	       CAN_Samrh71_Rtems_Address_application_control_can_id_PRESENT;
+	       can_samrh71_application_control_can_id_PRESENT;
 }
 
 static int maxMessageSize(const samrh71_can_generic_private_data *const self)
@@ -730,16 +725,17 @@ void SamRH71RtemsCanSend(void *const private_data, const uint8_t *const data,
 		Mcan_IdType idType = Mcan_IdType_Standard;
 		uint32_t id = 0;
 
-		if (self->m_config->address.u.static_can_id.kind ==
-		    CAN_Samrh71_Rtems_Can_Id_can_id_standard_PRESENT) {
+		if (self->m_config->address.u.can_samrh71_static_can_id.kind ==
+		    can_samrh71_can_id_standard_PRESENT) {
 			idType = Mcan_IdType_Standard;
-			id = self->m_config->address.u.static_can_id.u
-				     .can_id_standard;
-		} else if (self->m_config->address.u.static_can_id.kind ==
-			   CAN_Samrh71_Rtems_Can_Id_can_id_extended_PRESENT) {
+			id = self->m_config->address.u.can_samrh71_static_can_id
+				     .u.can_samrh71_can_id_standard;
+		} else if (self->m_config->address.u.can_samrh71_static_can_id
+				   .kind ==
+			   can_samrh71_can_id_extended_PRESENT) {
 			idType = Mcan_IdType_Extended;
-			id = self->m_config->address.u.static_can_id.u
-				     .can_id_extended;
+			id = self->m_config->address.u.can_samrh71_static_can_id
+				     .u.can_samrh71_can_id_extended;
 		} else {
 			assert(0 &&
 			       "Unknown static can address value in configuration");
@@ -778,4 +774,11 @@ void SamRH71RtemsCanSend(void *const private_data, const uint8_t *const data,
 		assert(0 && "Unknown address kind in configuration");
 		return;
 	}
+}
+
+void SamRH71RtemsCanRegisterUserErrorCallback(
+	SamRH71RtemsCan_UserErrorCallback callback, void *arg)
+{
+	SamRH71RtemsCan_user_error_callback = callback;
+	SamRH71RtemsCan_user_error_callback_arg = arg;
 }

@@ -65,6 +65,11 @@
 				 RTEMS_FLOATING_POINT))
 
 /**
+ * @brief Function pointer definition for registering error callback.
+ */
+typedef void (*SamRH71RtemsCan_UserErrorCallback)(void *);
+
+/**
  * @brief Structure for samrh71_can_generic driver internal data
  *
  * This structure is allocated by runtime and the pointer is passed to all
@@ -129,6 +134,15 @@ void SamRH71RtemsCanPoll(rtems_task_argument private_data);
  * @param length         The size of the buffer
  */
 void SamRH71RtemsCanSend(void *private_data, const uint8_t *const data,
-			const size_t length);
+			 const size_t length);
+
+/**
+ * @brief Register callback for CAN errors.
+ *
+ * @param callback       Pointer to the callback function.
+ * @param arg            Argument which shall be passed when calling callback function.
+ */
+void SamRH71RtemsCanRegisterUserErrorCallback(
+	SamRH71RtemsCan_UserErrorCallback callback, void *arg);
 
 #endif
