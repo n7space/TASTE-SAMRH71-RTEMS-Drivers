@@ -27,6 +27,9 @@
 
 #include <rtems.h>
 
+#include <stddef.h>
+#include <stdint.h>
+
 #include <drivers_config.h>
 #include <system_spec.h>
 #include <Mcan/Mcan.h>

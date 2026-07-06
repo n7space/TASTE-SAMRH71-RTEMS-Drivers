@@ -107,8 +107,8 @@ static void configurePioCan0(Pio *pio)
         .debounceFilterDiv = 0,
     };
 
-	const Pio_Port_Config pioCanRxConfig ={
-                .pins = PIO_PIN_7,
+	const Pio_Port_Config pioCanRxConfig = {
+        .pins = PIO_PIN_7,
         .pinsConfig = {
             .control = Pio_Control_PeripheralC,
             .direction = Pio_Direction_Input,
@@ -354,7 +354,7 @@ prepareMcanConfig(samrh71_can_generic_private_data *const self)
       .offset = 0u,
     },
     .timestampClk = Mcan_TimestampClk_Internal,
-    .timestampTimeoutPrescaler = 14u,
+    .timestampTimeoutPrescaler = 9u,
     .timeout = {
       .isEnabled = false,
       .type = Mcan_TimeoutType_Continuous,

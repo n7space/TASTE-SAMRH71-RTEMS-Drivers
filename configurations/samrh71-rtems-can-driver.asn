@@ -23,8 +23,6 @@ SAMRH71-RTEMS-CAN-DRIVER DEFINITIONS AUTOMATIC TAGS ::= BEGIN
 
     CAN-Samrh71-Rtems-Data-Bit-Rate-Prescaler ::= INTEGER (0 .. 31)
 
-    CAN-Samrh71-Rtems-Data-Structure-T ::= ENUMERATED { plain, can-id-first }
-
     CAN-Samrh71-Rtems-Standard-Can-Id ::= INTEGER (0 .. 2047)
 
     CAN-Samrh71-Rtems-Extended-Can-Id ::= INTEGER (0 .. 536870911)
