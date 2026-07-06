@@ -168,7 +168,7 @@ static void configurePioCan0(Pio *pio)
 
 static void configurePioCan1(Pio *pio)
 {
-	// this configured mcan0 for SAMRH71 Evaluation Kit
+	// this configures mcan1 for SAMRH71 Evaluation Kit
 	// PB4 CANTX1
 	// PB5 CANRX1
 	const Pio_Port_Config pioCanTxConfig = {
