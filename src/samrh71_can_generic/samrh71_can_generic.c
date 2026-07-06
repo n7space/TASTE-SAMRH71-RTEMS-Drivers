@@ -137,7 +137,7 @@ static void configurePioCan0(Pio *pio)
 	assert(pioSetRxConfigStatus);
 	assert(errorCode == ErrorCode_NoError);
 
-	// SAMRH71 Evaluation Kit has CAN transciever, which requires standby pin (PC7) configuration
+	// SAMRH71 Evaluation Kit has CAN transceiver, which requires standby pin (PC7) configuration
 	Pio pioStandby;
 	bool pioStatus = Pio_init(Pio_Port_C, &pioStandby, &errorCode);
 	assert(pioStatus);
