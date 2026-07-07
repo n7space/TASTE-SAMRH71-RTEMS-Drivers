@@ -354,7 +354,7 @@ prepareMcanConfig(samrh71_can_generic_private_data *const self)
       .offset = 0u,
     },
     .timestampClk = Mcan_TimestampClk_Internal,
-    .timestampTimeoutPrescaler = 9u,
+    .timestampTimeoutPrescaler = 14u,
     .timeout = {
       .isEnabled = false,
       .type = Mcan_TimeoutType_Continuous,
