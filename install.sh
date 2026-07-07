@@ -19,5 +19,6 @@ find "$TARGET_DIR" -type f -exec sed -i 's|#include "microchip_spw/spw.h"|#inclu
 find "$TARGET_DIR" -type f -exec sed -i 's|microchip_spw/||g' {} +
 
 cp -r "${SOURCES}/src/samrh71_rtems_serial" "${PREFIX}/include/TASTE-SAMRH71-RTEMS-Drivers/"
+cp -r "${SOURCES}/src/samrh71_can_generic" "${PREFIX}/include/TASTE-SAMRH71-RTEMS-Drivers/"
 
 cp -r "${SOURCES}/configurations" "${PREFIX}/include/TASTE-SAMRH71-RTEMS-Drivers/configurations"
