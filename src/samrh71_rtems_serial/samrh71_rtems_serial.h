@@ -23,6 +23,7 @@
 /**
  * @file     samrh71_rtems_serial.h
  * @brief    Driver for TASTE for SAMRH71 UART
+ * @satisfies MBEP-RT-IF-10
  */
 
 #include "samrh71_rtems_serial_internal.h"
