@@ -42,8 +42,10 @@ static void spw_tx_callback(void *arg, const Spw_Tx_IrqStatus *const irqStatus)
 		(samrh71_rtems_spw_private_data *)arg;
 
 	if (irqStatus->sendListDeactivatedIrqOccurred) {
-		// Spw_Tx_getStatus invokes TX_UnlockStatus that unlock the SPW TX module
-		// previous buffer status. Needed for next IRQ handling.
+		/* Spw_Tx_getStatus() invokes TX_UnlockStatus, which releases the
+		 * SPW TX module’s internal lock on the previous send-list status.
+		 * This unlock is mandatory before the next TX IRQ can be raised;
+		 * skipping it would block subsequent transmissions silently. */
 		Spw_Tx_Status status;
 		Spw_Tx_getStatus(&self->spw.tx, &status);
 		(void)status;
@@ -82,6 +84,11 @@ static void arm_rx_buffer(samrh71_rtems_spw_private_data *const self)
 	};
 	Spw_Rx_setNextRxBuffer(&self->spw.rx, &rxBufCfg);
 
+	/* Busy-poll until the hardware confirms the buffer is active.
+	 * The window is very short (a few bus cycles) because setNextRxBuffer()
+	 * triggers the hardware handshake; spinning is cheaper than a semaphore
+	 * here and the loop body is never reached in practice after the first
+	 * successful activation. */
 	Spw_Rx_Status rxStatus;
 	do {
 		Spw_Rx_getStatus(&self->spw.rx, &rxStatus);
@@ -97,6 +104,10 @@ static void process_rx_packets(samrh71_rtems_spw_private_data *const self)
 		Spw_Rx_RxBufferEntryStruct entry;
 		Spw_Rx_getRxBufferEntry(&self->rx_info[i], &entry);
 
+		/* SpaceWire packet integrity check:
+		 *   EOP (End-Of-Packet) must be set   – packet was fully received.
+		 *   EEP (Error End-Of-Packet) must be clear – no link error marker.
+		 * Discard the packet if either condition is violated. */
 		if (!entry.wasEopReceived || entry.wasEepReceived) {
 			/* Discard malformed packet. */
 			continue;
@@ -130,13 +141,16 @@ static void init_pmc(const samrh71_rtems_spw_private_data *const self)
 		.isPeripheralClkEnabled = true,
 		.isGclkEnabled = true,
 		.gclkSrc = Pmc_GclkSrc_Masterck,
-		.gclkPresc = 0U, // this is a divider, leave it to zero
+		.gclkPresc =
+			0U, // prescaler = 0 means divide-by-1 (no division)
 	};
 
 	// Main spw peripheral clock, always active
 	Pmc_setPeripheralClkConfig(&pmc, Pmc_PeripheralId_Spw0, &spwClk);
 
-	// Configure optional spw peripheral clock for Link 2
+	/* Link 2 is physically a second independent SPW port (Spw1 peripheral).
+	 * Only enable its clock when it is actually in use to avoid unnecessary
+	 * power consumption. */
 	if (self->link_id == 2U) {
 		Pmc_setPeripheralClkConfig(&pmc, Pmc_PeripheralId_Spw1,
 					   &spwClk);
@@ -223,8 +237,11 @@ static void init_spw_router(const samrh71_rtems_spw_private_data *const self)
 
 static void check_spw_is_init_ok(samrh71_rtems_spw_private_data *const self)
 {
-	// After applying command=3 the link transitions:
-	// ErrorReset -> ErrorWait -> Ready
+	/* After issuing command=3 (Start + Listen) the SPW link state machine
+	 * progresses: ErrorReset → ErrorWait → Ready.
+	 * We poll once per RTEMS tick for up to SAMRH71_RTEMS_SPW_RESET_TIMEOUT_TICKS
+	 * ticks (~100 ms at 1 kHz) and record whether the link reached Ready in
+	 * time.  Callers can query this via samrh71_rtems_spacewire_is_init_ok(). */
 	Spw_Link_Status linkStatus;
 	rtems_interval ticks = 0U;
 	do {
@@ -381,6 +398,7 @@ void samrh71_rtems_spacewire_init(
 	assert(device_configuration != NULL);
 
 	self->ip_device_bus_id = bus_id;
+	/* ASN.1 link_id is 0-indexed; hardware link numbering is 1-indexed. */
 	self->link_id = (uint8_t)device_configuration->link_id + 1U;
 	self->node_id = device_configuration->node_id;
 	self->remote_node_id = remote_device_configuration->node_id;
@@ -391,7 +409,12 @@ void samrh71_rtems_spacewire_init(
 
 	master_clock_frequency = SamRH71Core_GetMainClockFrequency();
 
-	// SpaceWire standard requires init rate 10 Mbit/s.
+	/* SpaceWire standard requires initialisation at 10 Mbit/s.
+	 * txInitDiv is the hardware divider register value computed as:
+	 *   txDiv = ceil(2 * fMaster / bitrate) - 1
+	 * The ceiling division avoids a divider that is slightly too small
+	 * (which would produce a bit-rate above the target), using the
+	 * formula: ceil(a/b) = (a + b - 1) / b. */
 	const uint64_t init_bitrate = 10U * MEGA_HZ;
 	assert(init_bitrate <= 2U * master_clock_frequency);
 	const uint8_t txInitDiv =
@@ -403,6 +426,8 @@ void samrh71_rtems_spacewire_init(
 	uint8_t txOperDiv = txInitDiv;
 	if (device_configuration->exist.link_speed &&
 	    device_configuration->link_speed > 0U) {
+		/* Same ceiling-division formula applied to the configured
+		 * operational bit-rate (in MHz units from the ASN.1 config). */
 		const uint64_t oper_bitrate =
 			(uint64_t)device_configuration->link_speed * MEGA_HZ;
 		assert(oper_bitrate <= 2U * master_clock_frequency);
@@ -479,6 +504,9 @@ void samrh71_rtems_spacewire_send(void *private_data, const uint8_t *data,
 		.sendCondition = Spw_Tx_SendCondition_StartNow,
 		.sendListLength = 1U,
 		.sendListAddress = self->tx_send_list,
+		/* routerByte[0] is prepended to the packet as the SpaceWire router
+		 * address byte.  The router table maps remote_node_id to the correct
+		 * physical output port, so this acts as the destination address. */
 		.routerByte = { self->remote_node_id, 0U, 0U, 0U },
 		.abortOngoingSendListWhenStarted = false,
 		.startValue = 0U,

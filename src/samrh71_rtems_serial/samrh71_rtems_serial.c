@@ -469,6 +469,9 @@ Samrh71RtemsSerial_uart_init_pmc(const Serial_SamRH71_Rtems_Device_T device)
 		Samrh71RtemsSerial_get_uart_rx_pin_config(device);
 
 	SamRH71Core_EnablePeripheralClock(txPinConfig.peripheralId);
+	/* On most FLEXCOM instances the TX and RX pins share the same peripheral
+	 * clock, so a single enable call suffices.  Only enable the RX peripheral
+	 * separately when its peripheral ID differs (e.g., split FLEXCOM wiring). */
 	if (rxPinConfig.peripheralId != txPinConfig.peripheralId) {
 		SamRH71Core_EnablePeripheralClock(rxPinConfig.peripheralId);
 	}
@@ -484,6 +487,11 @@ inline static void
 Samrh71RtemsSerial_uart_init_flexcom(const Serial_SamRH71_Rtems_Device_T device)
 {
 	Flexcom_Id id = Samrh71RtemsSerial_get_flexcom_id(device);
+	/* Each FLEXCOM instance occupies 0x4000 bytes of address space starting
+	 * at FLEXCOM_ADDRESS_BASE.  The FLEXCOM_MR (mode register) sits at
+	 * offset 0 within each instance.  Writing FLEXCOM_MODE_USART (0x01)
+	 * selects the USART/UART sub-peripheral; the alternative modes are
+	 * SPI (0x02) and TWI/I2C (0x03). */
 	uint32_t *flexcomRegister = (uint32_t *)(FLEXCOM_ADDRESS_BASE +
 						 (FLEXCOM_ADDRESS_OFFSET * id));
 
@@ -696,8 +704,13 @@ SamRH71RtemsSerialInit_rx_handler(samrh71_rtems_serial_private_data *const self)
 	self->m_uart_rx_handler.characterArg = self;
 	self->m_uart_rx_handler.targetCharacter = STOP_BYTE;
 	if (self->m_raw_mode) {
+		/* Raw mode: wake the poll task after every single byte. */
 		self->m_uart_rx_handler.targetLength = 1;
 	} else {
+		/* Framed (Escaper) mode: use half the FIFO size as the fill
+		 * threshold.  This allows the interrupt to fire before the FIFO
+		 * is full, giving the poll task time to drain it without loss,
+		 * while still batching bytes to reduce task-switch overhead. */
 		self->m_uart_rx_handler.targetLength =
 			Serial_SAMRH71_RTEMS_RECV_BUFFER_SIZE / 2;
 	}
@@ -796,6 +809,10 @@ void Samrh71RtemsSerialPoll(rtems_task_argument private_data)
 		// if raw mode is disabled, start the Escaper's decoder
 		Escaper_start_decoder(&self->m_escaper);
 	}
+	/* Prime the first asynchronous read before entering the poll loop.
+	 * The RX semaphore is initially unlocked (value=1) so this obtain
+	 * returns immediately and arms the hardware FIFO read.  Subsequent
+	 * iterations block in the loop below until bytes arrive. */
 	rtems_status_code obtainResult = rtems_semaphore_obtain(
 		self->m_rx_semaphore, RTEMS_WAIT, RTEMS_NO_TIMEOUT);
 	assert(obtainResult == RTEMS_SUCCESSFUL);

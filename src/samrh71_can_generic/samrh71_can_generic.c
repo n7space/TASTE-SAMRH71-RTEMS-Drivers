@@ -48,6 +48,10 @@ static SamRH71RtemsCan_UserErrorCallback SamRH71RtemsCan_user_error_callback =
 	NULL;
 static void *SamRH71RtemsCan_user_error_callback_arg = NULL;
 
+/* MCAN interrupt line 0 handler.
+ * Two interrupt sources share this line:
+ *   hasRf0nOccurred – at least one frame arrived in RX FIFO 0; wake the poll task.
+ *   hasTcOccurred   – TX buffer transmission completed; wake the sender. */
 static void mcan_int0_Handler(void *const private_data)
 {
 	const samrh71_can_generic_private_data *const self =
@@ -449,6 +453,15 @@ prepareMcanConfig(samrh71_can_generic_private_data *const self)
 	return conf;
 }
 
+/* Decode a CAN frame ID and type from the first 4 bytes of @p data.
+ *
+ * The encoding used by the application controller (ACN) packs a 32-bit word
+ * as follows:
+ *   bits 28..0  – CAN ID value (standard: bits 10..0; extended: bits 28..0)
+ *   bit  29     – extended-ID flag: 1 = 29-bit extended, 0 = 11-bit standard
+ *   bits 31..30 – unused
+ *
+ * CAN_EXTENDED_ID_BIT (0x20000000) is the flag defined in the header. */
 static void getCanIdAndTypeFromMessageData(const uint8_t *const data,
 					   const size_t length,
 					   Mcan_IdType *const idType,
@@ -495,6 +508,13 @@ static int maxMessageSize(const samrh71_can_generic_private_data *const self)
 	return bus_message_size[self->m_bus_id];
 }
 
+/* Returns true when the Escaper framing layer must be used.
+ *
+ * CAN frames carry at most 8 bytes of payload (MCAN_MAX_DATA_SIZE).
+ * When the TASTE message bus requires more, multiple frames are needed and the
+ * Escaper provides the packet boundaries.  Dynamic-ID mode encodes the CAN ID
+ * inside the payload itself, so splitting is not supported in that mode and the
+ * Escaper is disabled regardless of message size. */
 static bool shouldUseEscaper(const samrh71_can_generic_private_data *const self)
 {
 	// escaper should be used only when max message size is greater than
@@ -515,6 +535,10 @@ void SamRH71RtemsCanInit(
 		(samrh71_can_generic_private_data *const)private_data;
 
 	memset(self->msgRam, 0, MSGRAM_SIZE * sizeof(uint32_t));
+	/* Disable D-cache for the message RAM region so that MCAN DMA writes are
+	 * immediately visible to the CPU without explicit cache maintenance.
+	 * The HAL expects (log2(size) - 1): MSGRAM_BYTE_SIZE = 2^11 bytes, so
+	 * we pass MSGRAM_BYTE_SIZE_EXPONENT - 1 = 10. */
 	SamRH71Core_DisableDataCacheInRegion(self->msgRam,
 					     MSGRAM_BYTE_SIZE_EXPONENT - 1);
 	self->m_bus_id = bus_id;
@@ -648,6 +672,11 @@ void SamRH71RtemsCanPoll(rtems_task_argument private_data)
 			} else {
 				// without Escaper Broker_receive_packet needs to be called directly
 				if (ifaceUsesDynamicId(self)) {
+					/* Dynamic-ID mode: reconstruct the ACN-encoded
+					 * frame as [CAN-ID (4B) | payload (nB)] in
+					 * m_value_buffer before passing to the Broker.
+					 * The extended-ID flag is re-set in the upper
+					 * bits so the sender can reconstruct the type. */
 					uint32_t canId = rxElement.id;
 					if (rxElement.idType ==
 					    Mcan_IdType_Extended) {
@@ -742,6 +771,11 @@ void SamRH71RtemsCanSend(void *const private_data, const uint8_t *const data,
 		}
 
 		if (shouldUseEscaper(self)) {
+			/* The payload is larger than one CAN frame.
+			 * Escaper_encode_packet() fills m_tx_buffer with the next
+			 * escaped chunk and advances @p index.  We send one frame
+			 * per chunk until the encoder signals completion with
+			 * packet_length == 0. */
 			size_t index = 0;
 			Escaper_start_encoder(&self->m_escaper);
 			size_t packet_length = Escaper_encode_packet(

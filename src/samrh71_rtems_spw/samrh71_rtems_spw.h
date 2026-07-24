@@ -1,6 +1,12 @@
 #ifndef SAMRH71_RTEMS_SPW_H
 #define SAMRH71_RTEMS_SPW_H
 
+/**
+ * @file     samrh71_rtems_spw.h
+ * @brief    Driver for TASTE for SAMRH71 SpaceWrite
+ * @satisfies MBEP-RT-IF-20
+ */
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
