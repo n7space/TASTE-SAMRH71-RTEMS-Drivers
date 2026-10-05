@@ -253,6 +253,10 @@ static inline Uart_Id getUartId(const Serial_SamRH71_Rtems_Device_T device)
 	case Serial_SamRH71_Rtems_Device_T_uart9:
 		return Uart_Id_9;
 	default:
+		// If this branch is hit, then the user provided configuration is invalid,
+		// or something went very wrong and the program will enter invalid state,
+		// so the safest course of action is to assert and abort (if the asserts
+		// are disabled).
 		assert(false && "Unsupported UART");
 		return Uart_Id_0;
 	}
@@ -283,6 +287,10 @@ getFlexcomId(const Serial_SamRH71_Rtems_Device_T device)
 	case Serial_SamRH71_Rtems_Device_T_uart9:
 		return Flexcom_Id_9;
 	default:
+		// If this branch is hit, then the user provided configuration is invalid,
+		// or something went very wrong and the program will enter invalid state,
+		// so the safest course of action is to assert and abort (if the asserts
+		// are disabled).
 		assert(false && "Unsupported UART");
 		return Flexcom_Id_0;
 	}
@@ -343,6 +351,10 @@ getUartTxPinConfig(const Serial_SamRH71_Rtems_Device_T device)
 			Pio_Control_PeripheralA);
 
 	default:
+		// If this branch is hit, then the user provided configuration is invalid,
+		// or something went very wrong and the program will enter invalid state,
+		// so the safest course of action is to assert and abort (if the asserts
+		// are disabled).
 		assert(false && "Unsupported UART");
 		return Samrh71RtemsSerial_make_uart_pin_config(
 			Pio_Port_C, Pmc_PeripheralId_Flexcom0, PIO_PIN_21,
@@ -405,6 +417,10 @@ getUartRxPinConfig(const Serial_SamRH71_Rtems_Device_T device)
 			Pio_Control_PeripheralA);
 
 	default:
+		// If this branch is hit, then the user provided configuration is invalid,
+		// or something went very wrong and the program will enter invalid state,
+		// so the safest course of action is to assert and abort (if the asserts
+		// are disabled).
 		assert(false && "Unsupported UART");
 		return Samrh71RtemsSerial_make_uart_pin_config(
 			Pio_Port_C, Pmc_PeripheralId_PioA, PIO_PIN_22,
@@ -460,7 +476,11 @@ static inline Pmc_PeripheralId getUartPeripheralId(Uart_Id id)
 	case Uart_Id_9:
 		return Pmc_PeripheralId_Flexcom9;
 	default:
-		assert(false);
+		// If this branch is hit, then the user provided configuration is invalid,
+		// or something went very wrong and the program will enter invalid state,
+		// so the safest course of action is to assert and abort (if the asserts
+		// are disabled).
+		assert(false && "Unsupported UART");
 		return Pmc_PeripheralId_Flexcom0;
 	}
 }
@@ -546,6 +566,10 @@ inline static void uartInitHandle(Uart *uart, Uart_Id id)
 		uart9handle = uart;
 		break;
 	default:
+		// If this branch is hit, then the user provided configuration is invalid,
+		// or something went very wrong and the program will enter invalid state,
+		// so the safest course of action is to assert and abort (if the asserts
+		// are disabled).
 		assert(false && "Unknown Uart_Id");
 	}
 }
@@ -608,6 +632,12 @@ static void uartWriteAsync(Samrh71RtemsSerial_Uart *const halUart,
 	Uart_writeAsync(&halUart->uart, &halUart->txFifo, *txHandler);
 }
 
+/** \brief Sends bytes over UART synchronously.
+ *
+ * \param [in] halUart Hal_Uart structure contains uart device descriptor
+ * \param [in] buffer array containing bytes to send
+ * \param [in] length length of array of bytes
+ */
 static void uartWriteBlocking(Samrh71RtemsSerial_Uart *const halUart,
 			      const uint8_t *const buffer,
 			      const uint16_t length)
@@ -658,6 +688,10 @@ static inline void initUartParity(samrh71_rtems_serial_private_data *self,
 		self->m_hal_uart_config.parity = Uart_Parity_None;
 		break;
 	default:
+		// If this branch is hit, then the user provided configuration is invalid,
+		// or something went very wrong and the program will enter invalid state,
+		// so the safest course of action is to assert and abort (if the asserts
+		// are disabled).
 		assert(false && "Not supported parity");
 	}
 }
@@ -685,6 +719,10 @@ static inline void initUartBaudrate(samrh71_rtems_serial_private_data *self,
 		self->m_hal_uart_config.baudrate = 230400;
 		break;
 	default:
+		// If this branch is hit, then the user provided configuration is invalid,
+		// or something went very wrong and the program will enter invalid state,
+		// so the safest course of action is to assert and abort (if the asserts
+		// are disabled).
 		assert(false && "Not supported baudrate");
 		break;
 	}
@@ -707,9 +745,6 @@ static void uartRxCallback(void *private_data)
 	samrh71_rtems_serial_private_data *self =
 		(samrh71_rtems_serial_private_data *)private_data;
 	rtems_event_send(self->m_task, UART_RX_EVENT);
-	/* rtems_status_code releaseResult = */
-	/* 	rtems_semaphore_release(self->m_rx_semaphore); */
-	/* assert(releaseResult == RTEMS_SUCCESSFUL); */
 }
 
 static void initUartRxHandler(samrh71_rtems_serial_private_data *const self)
@@ -861,14 +896,6 @@ void Samrh71RtemsSerialPoll(rtems_task_argument private_data)
 	/*  * The RX semaphore is initially unlocked (value=1) so this obtain */
 	/*  * returns immediately and arms the hardware FIFO read.  Subsequent */
 	/*  * iterations block in the loop below until bytes arrive. *\/ */
-	/* rtems_status_code obtainResult = rtems_semaphore_obtain( */
-	/* 	self->m_rx_semaphore, RTEMS_WAIT, RTEMS_NO_TIMEOUT); */
-	/* assert(obtainResult == RTEMS_SUCCESSFUL); */
-	/* uartRead(&self->m_hal_uart, */
-	/* 			     self->m_fifo_memory_block, */
-	/* 			     Serial_SAMRH71_RTEMS_RECV_BUFFER_SIZE, */
-	/* 			     self->m_uart_rx_handler); */
-
 	uartRead(&self->m_hal_uart, self->m_fifo_memory_block,
 		 Serial_SAMRH71_RTEMS_RECV_BUFFER_SIZE,
 		 self->m_uart_rx_handler);
@@ -903,47 +930,7 @@ void Samrh71RtemsSerialPoll(rtems_task_argument private_data)
 						      Broker_receive_packet);
 			}
 		}
-
-		// Wait for data to arrive. Semaphore will be given
-		/* obtainResult = rtems_semaphore_obtain( */
-		/* 	self->m_rx_semaphore, RTEMS_WAIT, RTEMS_NO_TIMEOUT); */
-		/* assert(obtainResult == RTEMS_SUCCESSFUL); */
-
-		/* ByteFifo byteFifo; */
-		/* ByteFifo_init(&byteFifo, self->m_recv_buffer, */
-		/* 	      Serial_SAMRH71_RTEMS_RECV_BUFFER_SIZE); */
-		/* Uart_readRxFifo(&self->m_hal_uart.uart, &byteFifo); */
-		/* const size_t length = ByteFifo_getCount(&byteFifo); */
 	}
-}
-
-/**
- * @brief Write callback for blocking TX mode: direct register write.
- */
-static void blockingWritePacket(samrh71_rtems_serial_private_data *const self,
-				const uint8_t *const buffer,
-				const uint16_t length)
-{
-	uartWriteBlocking(&self->m_hal_uart, buffer, length);
-}
-
-static inline void
-waitForTxSemaphore(samrh71_rtems_serial_private_data *const self)
-{
-	const rtems_status_code obtainResult = rtems_semaphore_obtain(
-		self->m_tx_semaphore, RTEMS_WAIT, RTEMS_NO_TIMEOUT);
-	assert(obtainResult == RTEMS_SUCCESSFUL);
-}
-
-/**
- * @brief Write callback for async TX mode: semaphore wait then DMA send.
- */
-static void asyncWritePacket(samrh71_rtems_serial_private_data *const self,
-			     const uint8_t *const buffer, const uint16_t length)
-{
-	waitForTxSemaphore(self);
-	uartWriteAsync(&self->m_hal_uart, buffer, length,
-		       &self->m_uart_tx_handler);
 }
 
 static inline bool
@@ -983,13 +970,40 @@ static void sendEscapedPackets(samrh71_rtems_serial_private_data *const self,
 	}
 }
 
+static inline void
+waitForTxSemaphore(samrh71_rtems_serial_private_data *const self)
+{
+	const rtems_status_code obtainResult = rtems_semaphore_obtain(
+		self->m_tx_semaphore, RTEMS_WAIT, RTEMS_NO_TIMEOUT);
+	assert(obtainResult == RTEMS_SUCCESSFUL);
+}
+
+/**
+ * @brief Write callback for async TX mode: semaphore wait then send asynchronously.
+ */
+static void asyncWritePacket(samrh71_rtems_serial_private_data *const self,
+			     const uint8_t *const buffer, const uint16_t length)
+{
+	waitForTxSemaphore(self);
+	uartWriteAsync(&self->m_hal_uart, buffer, length,
+		       &self->m_uart_tx_handler);
+}
+
+/**
+ * @brief Write callback for blocking TX mode: direct register write.
+ */
+static void blockingWritePacket(samrh71_rtems_serial_private_data *const self,
+				const uint8_t *const buffer,
+				const uint16_t length)
+{
+	uartWriteBlocking(&self->m_hal_uart, buffer, length);
+}
+
 void Samrh71RtemsSerialSend(void *private_data, const uint8_t *const data,
 			    const size_t length)
 {
 	samrh71_rtems_serial_private_data *self =
 		(samrh71_rtems_serial_private_data *)private_data;
-	size_t index = 0;
-	size_t packetLength = 0;
 
 	if (!rawModeEnabled(self)) {
 		if (blockingTxModeEnabled(self)) {
