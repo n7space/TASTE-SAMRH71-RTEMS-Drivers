@@ -19,14 +19,14 @@ typedef enum {
 #define Spw_SamRH71_Rtems_Conf_Link_T_spw0 spw0
 #define Spw_SamRH71_Rtems_Conf_Link_T_spw1 spw1
 
-#define ERR_SPW_SAMRH71_RTEMS_CONF_LINK_T		276  /*spw0 | spw1*/
+#define ERR_SPW_SAMRH71_RTEMS_CONF_LINK_T		291  /*spw0 | spw1*/
 flag Spw_SamRH71_Rtems_Conf_Link_T_IsConstraintValid(const Spw_SamRH71_Rtems_Conf_Link_T* pVal, int* pErrCode);
 
 void Spw_SamRH71_Rtems_Conf_Link_T_Initialize(Spw_SamRH71_Rtems_Conf_Link_T* pVal);
 typedef asn1SccUint Spw_SamRH71_Rtems_Conf_Node_Id_T;
 
 
-#define ERR_SPW_SAMRH71_RTEMS_CONF_NODE_ID_T		281  /*(32 .. 255)*/
+#define ERR_SPW_SAMRH71_RTEMS_CONF_NODE_ID_T		296  /*(32 .. 255)*/
 flag Spw_SamRH71_Rtems_Conf_Node_Id_T_IsConstraintValid(const Spw_SamRH71_Rtems_Conf_Node_Id_T* pVal, int* pErrCode);
 
 void Spw_SamRH71_Rtems_Conf_Node_Id_T_Initialize(Spw_SamRH71_Rtems_Conf_Node_Id_T* pVal);
@@ -43,7 +43,7 @@ typedef enum {
 #define Spw_SamRH71_Rtems_Conf_Link_Speed_T_b50Mbit b50Mbit
 #define Spw_SamRH71_Rtems_Conf_Link_Speed_T_b100Mbit b100Mbit
 
-#define ERR_SPW_SAMRH71_RTEMS_CONF_LINK_SPEED_T		286  /*b2Mbit | b10Mbit | b50Mbit | b100Mbit*/
+#define ERR_SPW_SAMRH71_RTEMS_CONF_LINK_SPEED_T		301  /*b2Mbit | b10Mbit | b50Mbit | b100Mbit*/
 flag Spw_SamRH71_Rtems_Conf_Link_Speed_T_IsConstraintValid(const Spw_SamRH71_Rtems_Conf_Link_Speed_T* pVal, int* pErrCode);
 
 void Spw_SamRH71_Rtems_Conf_Link_Speed_T_Initialize(Spw_SamRH71_Rtems_Conf_Link_Speed_T* pVal);
@@ -62,11 +62,11 @@ typedef struct {
 
 } Spw_SamRH71_Rtems_Conf_T;
 
-#define ERR_SPW_SAMRH71_RTEMS_CONF_T		326  /**/
-#define ERR_SPW_SAMRH71_RTEMS_CONF_T_LINK_ID_2		296  /**/
-#define ERR_SPW_SAMRH71_RTEMS_CONF_T_NODE_ID_2		306  /**/
-#define ERR_SPW_SAMRH71_RTEMS_CONF_T_LINK_SPEED_2		316  /**/
-#define ERR_SPW_SAMRH71_RTEMS_CONF_T_REMOVE_PROT_ID		321  /**/
+#define ERR_SPW_SAMRH71_RTEMS_CONF_T		341  /**/
+#define ERR_SPW_SAMRH71_RTEMS_CONF_T_LINK_ID_2		311  /**/
+#define ERR_SPW_SAMRH71_RTEMS_CONF_T_NODE_ID_2		321  /**/
+#define ERR_SPW_SAMRH71_RTEMS_CONF_T_LINK_SPEED_2		331  /**/
+#define ERR_SPW_SAMRH71_RTEMS_CONF_T_REMOVE_PROT_ID		336  /**/
 flag Spw_SamRH71_Rtems_Conf_T_IsConstraintValid(const Spw_SamRH71_Rtems_Conf_T* pVal, int* pErrCode);
 
 void Spw_SamRH71_Rtems_Conf_T_Initialize(Spw_SamRH71_Rtems_Conf_T* pVal);

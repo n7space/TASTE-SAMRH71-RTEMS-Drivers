@@ -596,7 +596,7 @@ static void initUartHardware(Samrh71RtemsSerial_Uart *const halUart,
  */
 static void uartWriteAsync(Samrh71RtemsSerial_Uart *const halUart,
 			   const uint8_t *const buffer, const uint16_t length,
-			   const Uart_TxHandler txHandler)
+			   const Uart_TxHandler *const txHandler)
 {
 	Uart_ErrorHandler errorHandler = { .callback = uartErrorHandler,
 					   .arg = halUart };
@@ -605,7 +605,7 @@ static void uartWriteAsync(Samrh71RtemsSerial_Uart *const halUart,
 			       length);
 
 	Uart_registerErrorHandler(&halUart->uart, errorHandler);
-	Uart_writeAsync(&halUart->uart, &halUart->txFifo, txHandler);
+	Uart_writeAsync(&halUart->uart, &halUart->txFifo, *txHandler);
 }
 
 static void uartWriteBlocking(Samrh71RtemsSerial_Uart *const halUart,
@@ -813,6 +813,7 @@ void Samrh71RtemsSerialInit(
 
 	self->m_ip_device_bus_id = bus_id;
 	self->m_packetizer_mode = device_configuration->packetizer_mode;
+	self->m_tx_mode = device_configuration->tx_mode;
 
 	initUart(self, device_configuration);
 	initUartRxHandler(self);
@@ -926,6 +927,31 @@ static void blockingWritePacket(samrh71_rtems_serial_private_data *const self,
 	uartWriteBlocking(&self->m_hal_uart, buffer, length);
 }
 
+static inline void
+waitForTxSemaphore(samrh71_rtems_serial_private_data *const self)
+{
+	const rtems_status_code obtainResult = rtems_semaphore_obtain(
+		self->m_tx_semaphore, RTEMS_WAIT, RTEMS_NO_TIMEOUT);
+	assert(obtainResult == RTEMS_SUCCESSFUL);
+}
+
+/**
+ * @brief Write callback for async TX mode: semaphore wait then DMA send.
+ */
+static void asyncWritePacket(samrh71_rtems_serial_private_data *const self,
+			     const uint8_t *const buffer, const uint16_t length)
+{
+	waitForTxSemaphore(self);
+	uartWriteAsync(&self->m_hal_uart, buffer, length,
+		       &self->m_uart_tx_handler);
+}
+
+static inline bool
+blockingTxModeEnabled(const samrh71_rtems_serial_private_data *const self)
+{
+	return self->m_tx_mode == Serial_SamRH71_Rtems_Tx_Mode_T_blocking;
+}
+
 /**
  * @brief Packet write function signature.
  *
@@ -966,9 +992,21 @@ void Samrh71RtemsSerialSend(void *private_data, const uint8_t *const data,
 	size_t packetLength = 0;
 
 	if (!rawModeEnabled(self)) {
-		sendEscapedPackets(self, data, length, blockingWritePacket);
+		if (blockingTxModeEnabled(self)) {
+			sendEscapedPackets(self, data, length,
+					   blockingWritePacket);
+		} else {
+			sendEscapedPackets(self, data, length,
+					   asyncWritePacket);
+		}
 	} else {
-		uartWriteBlocking(&self->m_hal_uart, data, length);
+		if (blockingTxModeEnabled(self)) {
+			uartWriteBlocking(&self->m_hal_uart, data, length);
+		} else {
+			waitForTxSemaphore(self);
+			uartWriteAsync(&self->m_hal_uart, data, length,
+				       &self->m_uart_tx_handler);
+		}
 	}
 }
 

@@ -85,6 +85,7 @@ typedef struct {
 	Uart_ErrorHandler m_uart_error_handler;
 	rtems_id m_tx_semaphore;
     Serial_SamRH71_Rtems_Packetizer_Mode_T m_packetizer_mode;
+    Serial_SamRH71_Rtems_Tx_Mode_T m_tx_mode;
 } samrh71_rtems_serial_private_data;
 
 /**

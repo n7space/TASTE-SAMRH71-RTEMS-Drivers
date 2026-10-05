@@ -155,6 +155,24 @@ void Serial_SamRH71_Rtems_Packetizer_Mode_T_Initialize(Serial_SamRH71_Rtems_Pack
 }
 
 
+flag Serial_SamRH71_Rtems_Tx_Mode_T_IsConstraintValid(const Serial_SamRH71_Rtems_Tx_Mode_T* pVal, int* pErrCode)
+{
+    flag ret = TRUE;
+    ret = ((((*(pVal)) == asynchronous)) || (((*(pVal)) == blocking)));
+    *pErrCode = ret ? 0 :  ERR_SERIAL_SAMRH71_RTEMS_TX_MODE_T;
+
+	return ret;
+}
+
+void Serial_SamRH71_Rtems_Tx_Mode_T_Initialize(Serial_SamRH71_Rtems_Tx_Mode_T* pVal)
+{
+	(void)pVal;
+
+
+	(*(pVal)) = asynchronous;
+}
+
+
 flag Serial_SamRH71_Rtems_Conf_T_IsConstraintValid(const Serial_SamRH71_Rtems_Conf_T* pVal, int* pErrCode)
 {
     flag ret = TRUE;
@@ -165,6 +183,9 @@ flag Serial_SamRH71_Rtems_Conf_T_IsConstraintValid(const Serial_SamRH71_Rtems_Co
             ret = Serial_SamRH71_Rtems_Parity_T_IsConstraintValid((&(pVal->parity)), pErrCode);
             if (ret) {
                 ret = Serial_SamRH71_Rtems_Packetizer_Mode_T_IsConstraintValid((&(pVal->packetizer_mode)), pErrCode);
+                if (ret) {
+                    ret = Serial_SamRH71_Rtems_Tx_Mode_T_IsConstraintValid((&(pVal->tx_mode)), pErrCode);
+                }   /*COVERAGE_IGNORE*/
             }   /*COVERAGE_IGNORE*/
         }   /*COVERAGE_IGNORE*/
     }   /*COVERAGE_IGNORE*/
@@ -185,6 +206,8 @@ void Serial_SamRH71_Rtems_Conf_T_Initialize(Serial_SamRH71_Rtems_Conf_T* pVal)
 	Serial_SamRH71_Rtems_Parity_T_Initialize((&(pVal->parity)));
 	/*set packetizer_mode */
 	Serial_SamRH71_Rtems_Packetizer_Mode_T_Initialize((&(pVal->packetizer_mode)));
+	/*set tx_mode */
+	Serial_SamRH71_Rtems_Tx_Mode_T_Initialize((&(pVal->tx_mode)));
 }
 
 

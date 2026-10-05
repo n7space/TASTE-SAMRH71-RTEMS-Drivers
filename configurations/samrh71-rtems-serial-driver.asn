@@ -33,11 +33,20 @@ Serial-SamRH71-Rtems-Packetizer-Mode-T    ::= CHOICE {
    }
 }
 
+-- Transmission handling mode
+Serial-SamRH71-Rtems-Tx-Mode-T ::= ENUMERATED {
+   -- Uses DMA, recommended for escaped-packets and large amount of data
+   asynchronous,
+   -- Synchronously writes bytes, recommended for single-byte mode and small amounts of data
+   blocking
+}
+
 Serial-SamRH71-Rtems-Conf-T ::= SEQUENCE {
    devname        Serial-SamRH71-Rtems-Device-T,
    speed          Serial-SamRH71-Rtems-Baudrate-T,
    parity         Serial-SamRH71-Rtems-Parity-T,
-   packetizer-mode Serial-SamRH71-Rtems-Packetizer-Mode-T
+   packetizer-mode Serial-SamRH71-Rtems-Packetizer-Mode-T,
+   tx-mode        Serial-SamRH71-Rtems-Tx-Mode-T
 }
 
 END

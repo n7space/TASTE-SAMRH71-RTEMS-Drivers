@@ -17,8 +17,8 @@ enum SystemPartition {
 
 enum SystemBus {
     BUS_INVALID_ID,
-    BUS_BUS_2,
     BUS_BUS_1,
+    BUS_BUS_2,
     BUS_BUS_3,
 };
 

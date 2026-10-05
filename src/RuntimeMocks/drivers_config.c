@@ -28,7 +28,8 @@ const Serial_SamRH71_Rtems_Conf_T pohidrv_node_1_uart0 = {
     .packetizer_mode = {
         .kind = escaped_packets_PRESENT,
         .u = { .escaped_packets = TRUE}
-    }
+    },
+    .tx_mode = asynchronous
 };
 const CAN_SamRH71_Rtems_Conf_T pohidrv_node_1_can0 = {
     .can_interface = mcan_interface_mcan1,
@@ -68,7 +69,8 @@ const Serial_SamRH71_Rtems_Conf_T pohidrv_node_2_uart0 = {
     .packetizer_mode = {
         .kind = escaped_packets_PRESENT,
         .u = { .escaped_packets = TRUE}
-    }
+    },
+    .tx_mode = asynchronous
 };
 const CAN_SamRH71_Rtems_Conf_T pohidrv_node_2_can0 = {
     .can_interface = mcan_interface_mcan1,
