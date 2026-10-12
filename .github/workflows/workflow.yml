@@ -34,7 +34,7 @@ jobs:
       # Cyclomatic complexity limit: 10
       # Line number per function limit: 50
       run: |
-        ./env/bin/lizard -C 10 -L 50 -l cpp -l c -x src/RuntimeMocks/ src/
+        ./env/bin/lizard -C 10 -L 50 -l cpp -l c src/
     - name: Build
       run: |
         mkdir build-samrh
