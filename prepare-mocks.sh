@@ -8,15 +8,11 @@ popd
 
 set -e
 
-cp dummy-project/work/dataview/C/asn1crt.h src/RuntimeMocks/
-cp dummy-project/work/dataview/C/asn1crt.c src/RuntimeMocks/
-cp dummy-project/work/build/system_spec/system_spec.h src/RuntimeMocks/
-cp dummy-project/work/build/system_spec/system_spec.c src/RuntimeMocks/
-cp dummy-project/work/build/DriversConfig/drivers_config.h src/RuntimeMocks/
-cp dummy-project/work/build/DriversConfig/drivers_config.c src/RuntimeMocks/
-cp dummy-project/work/build/DriversConfig/samrh71-rtems-serial-driver.h src/RuntimeMocks/
-cp dummy-project/work/build/DriversConfig/samrh71-rtems-serial-driver.c src/RuntimeMocks/
-cp dummy-project/work/build/DriversConfig/samrh71-rtems-can-driver.h src/RuntimeMocks/
-cp dummy-project/work/build/DriversConfig/samrh71-rtems-can-driver.c src/RuntimeMocks/
-cp dummy-project/work/build/DriversConfig/samrh71-rtems-spw-driver.h src/RuntimeMocks/
-cp dummy-project/work/build/DriversConfig/samrh71-rtems-spw-driver.c src/RuntimeMocks/
+cp dummy-project/work/dataview/C/asn1crt.{h,c} mocks/RuntimeMocks/
+cp dummy-project/work/dataview/C/dataview-uniq.{h,c} mocks/RuntimeMocks/
+cp dummy-project/work/dataview/C/asn1crt_encoding.{h,c} mocks/RuntimeMocks/
+cp dummy-project/work/build/system_spec/system_spec.{h,c} mocks/RuntimeMocks/
+cp dummy-project/work/build/DriversConfig/drivers_config.{h,c} mocks/RuntimeMocks/
+cp dummy-project/work/build/DriversConfig/samrh71-rtems-serial-driver.{h,c} mocks/RuntimeMocks/
+cp dummy-project/work/build/DriversConfig/samrh71-rtems-can-driver.{h,c} mocks/RuntimeMocks/
+cp dummy-project/work/build/DriversConfig/samrh71-rtems-spw-driver.{h,c} mocks/RuntimeMocks/

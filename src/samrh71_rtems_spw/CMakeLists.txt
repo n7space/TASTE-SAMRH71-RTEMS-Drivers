@@ -20,8 +20,7 @@ target_sources(SamRH71RtemsSpw
   PUBLIC    samrh71_rtems_spw.h)
 
 target_include_directories(SamRH71RtemsSpw
-  PUBLIC    ${CMAKE_SOURCE_DIR}/src/RuntimeMocks
-            ${CMAKE_SOURCE_DIR}/TASTE-SAMX-RTEMS-Runtime/src
+  PUBLIC    ${CMAKE_SOURCE_DIR}/TASTE-SAMX-RTEMS-Runtime/src
             ${CMAKE_CURRENT_SOURCE_DIR}
             ${CMAKE_CURRENT_SOURCE_DIR}/n7s-spw/src
             ${CMAKE_CURRENT_SOURCE_DIR}/n7s-spw/stubs
@@ -31,11 +30,12 @@ target_include_directories(SamRH71RtemsSpw
             ${CMAKE_CURRENT_SOURCE_DIR}/n7s-spw/arm-bsp/src/Nvic)
 
 target_link_libraries(SamRH71RtemsSpw
-  PRIVATE   common_build_options
-  PUBLIC    SAMV71::Runtime::Hal
-            SAMV71::Runtime::Core
+  PRIVATE   drivers_common_build_options
+  PUBLIC    SAMX71::Runtime::Hal
+            SAMX71::Runtime::Core
             TASTE::Broker
-            TASTE::Escaper)
+            TASTE::Escaper
+            SAMRH71::RuntimeMocks)
 
 add_format_target(SamRH71RtemsSpw)
 
