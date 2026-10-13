@@ -747,38 +747,42 @@ static void uartRxCallback(void *private_data)
 	rtems_event_send(self->m_task, UART_RX_EVENT);
 }
 
+static void
+initUartRxHandlerForRawMode(samrh71_rtems_serial_private_data *const self)
+{
+	switch (self->m_packetizer_mode.u.raw.kind) {
+	case single_byte_PRESENT:
+		self->m_uart_rx_handler.lengthCallback = uartRxCallback;
+		self->m_uart_rx_handler.lengthArg = self;
+		self->m_uart_rx_handler.characterCallback = NULL;
+		self->m_uart_rx_handler.characterArg = NULL;
+		self->m_uart_rx_handler.targetLength = 1;
+		break;
+	case custom_escape_byte_PRESENT:
+		self->m_uart_rx_handler.lengthCallback = uartRxCallback;
+		self->m_uart_rx_handler.lengthArg = self;
+		self->m_uart_rx_handler.characterCallback = uartRxCallback;
+		self->m_uart_rx_handler.characterArg = self;
+		self->m_uart_rx_handler.targetCharacter =
+			self->m_packetizer_mode.u.raw.u.custom_escape_byte;
+		self->m_uart_rx_handler.targetLength =
+			Serial_SAMRH71_RTEMS_RECV_BUFFER_SIZE / 2;
+		break;
+	default:
+		// If this branch is hit, then the user provided configuration is invalid,
+		// or something went very wrong and the program will enter invalid state, so
+		// the safest course of action is to assert and abort (if the asserts are
+		// disabled).
+		assert(false && "Not supported raw mode kind");
+		abort();
+	}
+}
+
 static void initUartRxHandler(samrh71_rtems_serial_private_data *const self)
 {
 	switch (self->m_packetizer_mode.kind) {
 	case raw_PRESENT:
-		switch (self->m_packetizer_mode.u.raw.kind) {
-		case single_byte_PRESENT:
-			self->m_uart_rx_handler.lengthCallback = uartRxCallback;
-			self->m_uart_rx_handler.lengthArg = self;
-			self->m_uart_rx_handler.characterCallback = NULL;
-			self->m_uart_rx_handler.characterArg = NULL;
-			self->m_uart_rx_handler.targetLength = 1;
-			break;
-		case custom_escape_byte_PRESENT:
-			self->m_uart_rx_handler.lengthCallback = uartRxCallback;
-			self->m_uart_rx_handler.lengthArg = self;
-			self->m_uart_rx_handler.characterCallback =
-				uartRxCallback;
-			self->m_uart_rx_handler.characterArg = self;
-			self->m_uart_rx_handler.targetCharacter =
-				self->m_packetizer_mode.u.raw.u
-					.custom_escape_byte;
-			self->m_uart_rx_handler.targetLength =
-				Serial_SAMRH71_RTEMS_RECV_BUFFER_SIZE / 2;
-			break;
-		default:
-			// If this branch is hit, then the user provided configuration is invalid,
-			// or something went very wrong and the program will enter invalid state, so
-			// the safest course of action is to assert and abort (if the asserts are
-			// disabled).
-			assert(false && "Not supported raw mode kind");
-			abort();
-		}
+		initUartRxHandlerForRawMode(self);
 		break;
 	case escaped_packets_PRESENT:
 		self->m_uart_rx_handler.lengthCallback = uartRxCallback;

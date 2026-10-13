@@ -1,25 +1,20 @@
-add_library(SamV71RuntimeMocks STATIC)
-target_sources(SamV71RuntimeMocks
+add_library(SamRH71RuntimeMocks STATIC)
+target_sources(SamRH71RuntimeMocks
   PRIVATE   asn1crt.c
             drivers_config.c
             interfaces_info.c
             samrh71-rtems-spw-driver.c
             system_spec.c
-            SamRH71Core.c
   PUBLIC    asn1crt.h
             drivers_config.h
             interfaces_info.h
             samrh71-rtems-spw-driver.h
-            system_spec.h
-            SamRH71Core.h)
+            system_spec.h)
 
-target_include_directories(SamV71RuntimeMocks
+target_include_directories(SamRH71RuntimeMocks
   PUBLIC    ${CMAKE_SOURCE_DIR}/TASTE-SAMX-RTEMS-Runtime/src
             ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(SamV71RuntimeMocks
-  PRIVATE   common_build_options)
+add_format_target(SamRH71RuntimeMocks)
 
-add_format_target(SamV71RuntimeMocks)
-
-add_library(SAMV71::RuntimeMocks ALIAS SamV71RuntimeMocks)
+add_library(SAMRH71::RuntimeMocks ALIAS SamRH71RuntimeMocks)

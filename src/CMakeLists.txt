@@ -1,3 +1,4 @@
-add_subdirectory(RuntimeMocks)
 add_subdirectory(app)
 add_subdirectory(samrh71_rtems_spw)
+add_subdirectory(samrh71_can_generic)
+add_subdirectory(samrh71_rtems_serial)
