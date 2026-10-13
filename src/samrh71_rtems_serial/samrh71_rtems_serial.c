@@ -748,7 +748,7 @@ static void uartRxCallback(void *private_data)
 }
 
 static void
-initUartRxHandlerForRawMode(samv71_rtems_serial_private_data *const self)
+initUartRxHandlerForRawMode(samrh71_rtems_serial_private_data *const self)
 {
 	switch (self->m_packetizer_mode.u.raw.kind) {
 	case single_byte_PRESENT:
