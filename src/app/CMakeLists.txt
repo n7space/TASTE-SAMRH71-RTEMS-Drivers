@@ -7,11 +7,11 @@ target_include_directories(Samrh71App
                 ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(Samrh71App
-    PRIVATE     common_build_options
-                SAMV71::Runtime::Hal
+    PRIVATE     drivers_common_build_options
+                SAMX71::Runtime::Hal
                 TASTE::SamRH71RtemsSpw
                 TASTE::Broker
-                SAMV71::RuntimeMocks
-                SAMV71::Runtime::BrokerLock)
+                SAMRH71::RuntimeMocks
+                SAMX71::Runtime::BrokerLock)
 
 add_format_target(Samrh71App)
