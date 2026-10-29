@@ -598,16 +598,17 @@ static void initUartHardware(Samrh71RtemsSerial_Uart *const halUart,
 	Uart_init(halUartConfig.id, &halUart->uart);
 	Uart_reset(&halUart->uart);
 
-	Uart_Config config = { .isTxEnabled = true,
-			       .isRxEnabled = true,
-			       .isTestModeEnabled = false,
-			       .parity = halUartConfig.parity,
-			       .stopBits = Uart_StopBits_OneBit,
-			       .charLength = Uart_CharacterLength_8Bits,
-			       .baudRate = halUartConfig.baudrate,
-			       .baudRateClkSrc = Uart_BaudRateClk_PeripheralCk,
-			       .baudRateClkFreq =
-				       SamRH71Core_GetMainClockFrequency() };
+	Uart_Config config = {
+		.isTxEnabled = true,
+		.isRxEnabled = true,
+		.isTestModeEnabled = false,
+		.parity = halUartConfig.parity,
+		.stopBits = Uart_StopBits_OneBit,
+		.charLength = Uart_CharacterLength_8Bits,
+		.baudRate = halUartConfig.baudrate,
+		.baudRateClkSrc = Uart_BaudRateClk_PeripheralCk,
+		.baudRateClkFreq = SamRH71Core_GetMasterClockFrequency()
+	}; // master clock
 	Uart_setConfig(&halUart->uart, &config);
 }
 

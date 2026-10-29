@@ -407,7 +407,7 @@ void samrh71_rtems_spacewire_init(
 			(bool)device_configuration->remove_prot_id :
 			false;
 
-	master_clock_frequency = SamRH71Core_GetMainClockFrequency();
+	master_clock_frequency = SamRH71Core_GetMasterClockFrequency();
 
 	/* SpaceWire standard requires initialisation at 10 Mbit/s.
 	 * txInitDiv is the hardware divider register value computed as:
